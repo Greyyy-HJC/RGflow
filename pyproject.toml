@@ -7,7 +7,7 @@ name = "rgflow"
 version = "0.1.0"
 description = "Renormalization-group accelerated lattice field sampling"
 requires-python = ">=3.10"
-dependencies = ["matplotlib>=3.7", "numpy>=1.24"]
+dependencies = ["matplotlib>=3.7", "numpy>=1.24", "scipy>=1.10"]
 
 [project.optional-dependencies]
 test = ["pytest>=8"]
