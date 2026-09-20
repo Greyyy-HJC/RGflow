@@ -2,9 +2,13 @@ import numpy as np
 
 from rgflow.phi4.action import Phi4Action
 from rgflow.phi4.operator_diagnostics import (
+    KERNEL_OBSERVABLE_NAMES,
     OPERATOR_NAMES,
     bootstrap_ensemble_observables,
+    distribution_metrics,
+    kernel_observable_series,
     operator_series,
+    save_kernel_observable_histograms,
 )
 
 
@@ -74,3 +78,46 @@ def test_block_bootstrap_is_finite_and_reproducible() -> None:
         assert first[name].shape == (30,)
         assert np.all(np.isfinite(first[name]))
         np.testing.assert_allclose(first[name], second[name])
+
+
+def test_kernel_observables_match_reference_definitions() -> None:
+    fields = np.ones((3, 8, 8), dtype=np.float64)
+    action = Phi4Action(kappa=0.2, lam=1.0)
+    series = kernel_observable_series(fields, action)
+
+    assert tuple(series) == KERNEL_OBSERVABLE_NAMES
+    for name in ("phi2", "phi4", "local_kurtosis_ratio", "NN", "diag", "2nn", "m2", "m4"):
+        np.testing.assert_allclose(series[name], 1.0)
+    np.testing.assert_allclose(series["G_pmin_avg"], 0.0, atol=1.0e-28)
+    np.testing.assert_allclose(series["action_density"], 0.2)
+
+
+def test_distribution_metrics_include_support_and_tail_diagnostics() -> None:
+    values = np.linspace(-2.0, 2.0, 101)
+    metrics = distribution_metrics(values, values)
+
+    np.testing.assert_allclose(metrics["js_divergence"], 0.0)
+    np.testing.assert_allclose(metrics["total_variation"], 0.0)
+    np.testing.assert_allclose(metrics["ks_statistic"], 0.0)
+    np.testing.assert_allclose(metrics["wasserstein_1"], 0.0)
+    assert 0.97 <= metrics["inside_target_q01_q99"] <= 0.99
+    assert 0.89 <= metrics["inside_target_q05_q95"] <= 0.91
+
+
+def test_kernel_histogram_figure_and_metrics(tmp_path) -> None:
+    rng = np.random.default_rng(67)
+    coarse = rng.normal(size=(4, 6, 8, 8))
+    blocked = coarse + 0.02 * rng.normal(size=coarse.shape)
+    output = tmp_path / "kernel_observable_histograms.pdf"
+
+    metrics = save_kernel_observable_histograms(
+        output,
+        coarse,
+        blocked,
+        Phi4Action(),
+    )
+
+    assert output.exists()
+    assert output.with_suffix(".png").exists()
+    assert tuple(metrics) == KERNEL_OBSERVABLE_NAMES
+    assert all(set(metrics[name]) == {"test", "all"} for name in metrics)

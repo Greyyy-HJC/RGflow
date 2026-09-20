@@ -6,7 +6,7 @@ from rgflow.phi4.action import Phi4Action
 def test_action_has_global_z2_symmetry() -> None:
     rng = np.random.default_rng(7)
     fields = rng.normal(size=(3, 6, 6))
-    action = Phi4Action(kappa=0.3401, lam=1.0)
+    action = Phi4Action(kappa=0.340301, lam=1.0)
 
     np.testing.assert_allclose(action(fields), action(-fields))
 
@@ -29,7 +29,7 @@ def test_action_uses_periodic_nearest_neighbors() -> None:
 def test_local_delta_matches_full_action_difference() -> None:
     rng = np.random.default_rng(11)
     field = rng.normal(size=(8, 8))
-    action = Phi4Action(kappa=0.3401, lam=1.0)
+    action = Phi4Action(kappa=0.340301, lam=1.0)
     x, y = 3, 6
     proposal_value = -0.27
     proposal = field.copy()

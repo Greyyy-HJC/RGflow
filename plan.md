@@ -130,7 +130,7 @@ $$
 where $\phi_x$ is a real scalar field at site $x$, and $\hat{\mu}$ is the
 unit vector in direction $\mu$. For the initial 2D study, use
 $\lambda=1.0$ and the quoted critical coupling
-$\kappa_{\mathrm{cr}}=0.3401$.
+$\kappa_{\mathrm{cr}}=0.340301$.
 
 Use a set of short- and long-distance observables $\{O_i\}$ to evaluate
 overlap between two ensembles. A schematic mean-matching loss is

@@ -3,7 +3,50 @@ from pathlib import Path
 
 import numpy as np
 
-from rgflow.cli import main
+from rgflow.cli import build_parser, main
+from rgflow.phi4.kernel_cli import DEFAULT_TRAINING_PAIRS, DEFAULT_TRANSFER_PAIRS
+
+
+def test_phi4_production_defaults_use_reference_critical_coupling() -> None:
+    generate = build_parser().parse_args(["generate", "phi4"])
+    assert generate.sizes == [8, 16, 32]
+    assert generate.kappa == 0.340301
+
+    train = build_parser().parse_args(["train", "kernel", "phi4"])
+    assert train.training_pair is None
+    assert train.transfer_pair is None
+    assert [pair[0].name for pair in DEFAULT_TRAINING_PAIRS] == [
+        "phi4_L16_k0.340301_lam1.npz",
+        "phi4_L24_k0.340301_lam1.npz",
+        "phi4_L32_k0.340301_lam1.npz",
+    ]
+    assert [pair[0].name for pair in DEFAULT_TRANSFER_PAIRS] == [
+        "phi4_L48_k0.340301_lam1.npz",
+        "phi4_L64_k0.340301_lam1.npz",
+    ]
+    assert train.output == Path(
+        "artifacts/phi4/kernel/multivolume_sos2_k0.340301"
+    )
+    assert train.starts == 6
+    assert train.max_iterations == 250
+    assert train.optimization_samples_per_chain == 128
+
+
+    benchmark = build_parser().parse_args(
+        [
+            "benchmark",
+            "phi4",
+            "--case",
+            "checkpoint.pt",
+            "coarse.npz",
+            "native.npz",
+        ]
+    )
+    assert benchmark.chains == 128
+    assert benchmark.sweeps == 100
+    assert benchmark.replicates == 1
+    assert "detail2-wolff" in benchmark.methods
+    assert "hmc-wolff" in benchmark.methods
 
 
 def test_cli_writes_configurations_and_diagnostics(tmp_path) -> None:
@@ -48,7 +91,7 @@ def _write_kernel_ensemble(
         path,
         configurations=configurations,
         size=size,
-        kappa=0.3401,
+        kappa=0.340301,
         lam=1.0,
         seed=17,
     )
@@ -68,64 +111,49 @@ def test_kernel_training_cli_writes_operational_artifacts(tmp_path) -> None:
     _write_kernel_ensemble(coarse_path, coarse, 2)
     _write_kernel_ensemble(transfer_path, transfer, 8)
 
-    main(
-        [
-            "train",
-            "kernel",
-            "phi4",
-            "--fine",
-            str(fine_path),
-            "--coarse",
-            str(coarse_path),
-            "--transfer-fine",
-            str(transfer_path),
-            "--output",
-            str(output),
-            "--starts",
-            "1",
-            "--max-iterations",
-            "2",
-            "--bootstrap-samples",
-            "20",
-            "--seed",
-            "23",
-        ]
-    )
+    command = [
+        "train",
+        "kernel",
+        "phi4",
+        "--training-pair",
+        str(fine_path),
+        str(coarse_path),
+        "--transfer-pair",
+        str(transfer_path),
+        str(fine_path),
+        "--starts",
+        "1",
+        "--max-iterations",
+        "2",
+        "--bootstrap-samples",
+        "20",
+        "--seed",
+        "23",
+    ]
+    main([*command, "--output", str(output)])
 
     kernel = json.loads((output / "kernel.json").read_text())
     metrics = json.loads((output / "metrics.json").read_text())
     assert np.asarray(kernel["matrix"]).shape == (5, 5)
     assert kernel["selected_start"] == 0
-    assert "L32_to_L16_transfer_test" in metrics
+    assert kernel["parameterization"] == "multichannel_sos"
+    assert kernel["training_strategy"] == "equal_weight_multivolume_one_step"
+    assert kernel["optimizer"]["optimization_samples_per_chain"] == {"L4_to_L2": 5}
+    assert kernel["invertibility"] == "by_construction_positive_spectrum"
+    assert np.asarray(kernel["sos"]["filters"]).shape == (2, 3, 3)
+    assert kernel["spectrum"]["L256"]["min_abs_K"] > 0.0
+    assert list(metrics["training_pairs"]) == ["L4_to_L2"]
+    assert list(metrics["transfer_pairs"]) == ["L8_to_L4"]
     assert len(
         metrics["operator_distributions"]["configuration_operators"]
     ) == 24
     assert len(metrics["operator_distributions"]["bootstrap_observables"]) == 3
+    assert len(metrics["kernel_observable_distributions"]) == 10
+    assert (output / "kernel_observable_histograms.pdf").stat().st_size > 0
+    assert (output / "kernel_observable_histograms.png").stat().st_size > 0
     assert (output / "diagnostics.pdf").stat().st_size > 0
     assert (output / "operator_distributions.pdf").stat().st_size > 0
 
-    main(
-        [
-            "train",
-            "kernel",
-            "phi4",
-            "--fine",
-            str(fine_path),
-            "--coarse",
-            str(coarse_path),
-            "--transfer-fine",
-            str(transfer_path),
-            "--output",
-            str(repeated_output),
-            "--starts",
-            "1",
-            "--max-iterations",
-            "2",
-            "--bootstrap-samples",
-            "20",
-            "--seed",
-            "23",
-        ]
-    )
+    main([*command, "--output", str(repeated_output)])
     repeated_kernel = json.loads((repeated_output / "kernel.json").read_text())
     np.testing.assert_allclose(repeated_kernel["matrix"], kernel["matrix"])

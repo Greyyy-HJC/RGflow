@@ -15,7 +15,7 @@ from .sampling import generate_ensemble
 def configure_parser(parser: argparse.ArgumentParser) -> None:
     """Add phi-four generation options to a command parser."""
     parser.add_argument("--sizes", type=int, nargs="+", default=[8, 16, 32])
-    parser.add_argument("--kappa", type=float, default=0.3401)
+    parser.add_argument("--kappa", type=float, default=0.340301)
     parser.add_argument("--lambda", dest="lam", type=float, default=1.0)
     parser.add_argument("--chains", type=int, default=4)
     parser.add_argument("--samples-per-chain", type=int, default=250)

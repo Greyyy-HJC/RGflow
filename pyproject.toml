@@ -11,6 +11,8 @@ dependencies = ["matplotlib>=3.7", "numpy>=1.24", "scipy>=1.10"]
 
 [project.optional-dependencies]
 test = ["pytest>=8"]
+flow = ["torch>=2.2"]
+presentation = ["ipykernel>=6", "nbclient>=0.10", "nbformat>=5"]
 
 [project.scripts]
 rgflow = "rgflow.cli:main"

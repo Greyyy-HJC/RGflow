@@ -13,7 +13,7 @@ FloatArray = NDArray[np.floating]
 class Phi4Action:
     """Kappa-lambda phi-four action with periodic boundary conditions."""
 
-    kappa: float = 0.3401
+    kappa: float = 0.340301
     lam: float = 1.0
 
     def potential(self, field: FloatArray) -> FloatArray:

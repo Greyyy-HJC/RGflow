@@ -58,6 +58,32 @@ OPERATOR_TITLES = {
 }
 
 
+KERNEL_OBSERVABLE_NAMES = (
+    "phi2",
+    "phi4",
+    "local_kurtosis_ratio",
+    "NN",
+    "diag",
+    "2nn",
+    "m2",
+    "m4",
+    "G_pmin_avg",
+    "action_density",
+)
+
+KERNEL_OBSERVABLE_TITLES = {
+    "phi2": r"$\langle\phi^2\rangle$",
+    "phi4": r"$\langle\phi^4\rangle$",
+    "local_kurtosis_ratio": r"$\langle\phi^4\rangle/\langle\phi^2\rangle^2$",
+    "NN": r"$C(1,0)$",
+    "diag": r"$C(1,1)$",
+    "2nn": r"$C(2,0)$",
+    "m2": r"$m^2$",
+    "m4": r"$m^4$",
+    "G_pmin_avg": r"$G(p_{\min})$",
+    "action_density": r"$S/V$",
+}
+
 def _d4_orbit(a: int, b: int) -> tuple[tuple[int, int], ...]:
     offsets = {
         (sign_a * a, sign_b * b)
@@ -135,6 +161,47 @@ def operator_series(
     return series
 
 
+def kernel_observable_series(
+    configurations: FloatArray,
+    action: Phi4Action,
+) -> dict[str, FloatArray]:
+    """Return the per-configuration observables used to select the kernel."""
+    fields = np.asarray(configurations, dtype=np.float64)
+    axes = (-2, -1)
+    volume = fields.shape[-1] ** 2
+    phi2 = np.mean(fields**2, axis=axes)
+    phi4 = np.mean(fields**4, axis=axes)
+    magnetization = np.mean(fields, axis=axes)
+    transformed = np.fft.fft2(fields, axes=axes)
+    minimum_momentum = 0.5 * (
+        np.abs(transformed[..., 1, 0]) ** 2
+        + np.abs(transformed[..., 0, 1]) ** 2
+    ) / volume
+    return {
+        "phi2": phi2,
+        "phi4": phi4,
+        "local_kurtosis_ratio": phi4 / phi2**2,
+        "NN": 0.5
+        * (
+            np.mean(fields * np.roll(fields, -1, axis=-2), axis=axes)
+            + np.mean(fields * np.roll(fields, -1, axis=-1), axis=axes)
+        ),
+        "diag": np.mean(
+            fields * np.roll(np.roll(fields, -1, axis=-2), -1, axis=-1),
+            axis=axes,
+        ),
+        "2nn": 0.5
+        * (
+            np.mean(fields * np.roll(fields, -2, axis=-2), axis=axes)
+            + np.mean(fields * np.roll(fields, -2, axis=-1), axis=axes)
+        ),
+        "m2": magnetization**2,
+        "m4": magnetization**4,
+        "G_pmin_avg": minimum_momentum,
+        "action_density": action(fields) / volume,
+    }
+
+
 def distribution_metrics(
     blocked: FloatArray,
     target: FloatArray,
@@ -144,6 +211,28 @@ def distribution_metrics(
     target = np.asarray(target, dtype=np.float64)
     blocked = blocked[np.isfinite(blocked)]
     target = target[np.isfinite(target)]
+    if blocked.size == 0 or target.size == 0:
+        names = (
+            "blocked_mean",
+            "target_mean",
+            "standardized_mean_shift",
+            "blocked_std",
+            "target_std",
+            "std_ratio",
+            "ks_statistic",
+            "wasserstein_1",
+            "js_divergence",
+            "total_variation",
+            "below_target_q01",
+            "below_target_q05",
+            "below_target_q10",
+            "above_target_q90",
+            "above_target_q95",
+            "above_target_q99",
+            "inside_target_q01_q99",
+            "inside_target_q05_q95",
+        )
+        return {name: float("nan") for name in names}
     blocked_std = float(np.std(blocked, ddof=1 if blocked.size > 1 else 0))
     target_std = float(np.std(target, ddof=1 if target.size > 1 else 0))
     pooled_std = np.sqrt(0.5 * (blocked_std**2 + target_std**2))
@@ -154,6 +243,40 @@ def distribution_metrics(
     target_cdf = np.searchsorted(np.sort(target), pooled, side="right") / len(
         target
     )
+
+    edges = np.histogram_bin_edges(pooled, bins=35)
+    if len(edges) == 2 and edges[0] == edges[1]:
+        edges = np.array([edges[0] - 0.5, edges[1] + 0.5])
+    blocked_hist = np.histogram(blocked, bins=edges)[0].astype(np.float64)
+    target_hist = np.histogram(target, bins=edges)[0].astype(np.float64)
+    blocked_probability = blocked_hist / np.sum(blocked_hist)
+    target_probability = target_hist / np.sum(target_hist)
+    midpoint = 0.5 * (blocked_probability + target_probability)
+    blocked_nonzero = blocked_probability > 0.0
+    target_nonzero = target_probability > 0.0
+    js_divergence = 0.5 * (
+        np.sum(
+            blocked_probability[blocked_nonzero]
+            * np.log(
+                blocked_probability[blocked_nonzero] / midpoint[blocked_nonzero]
+            )
+        )
+        + np.sum(
+            target_probability[target_nonzero]
+            * np.log(target_probability[target_nonzero] / midpoint[target_nonzero])
+        )
+    )
+    quantiles = {
+        label: float(np.quantile(target, probability))
+        for label, probability in (
+            ("q01", 0.01),
+            ("q05", 0.05),
+            ("q10", 0.10),
+            ("q90", 0.90),
+            ("q95", 0.95),
+            ("q99", 0.99),
+        )
+    }
     return {
         "blocked_mean": float(np.mean(blocked)),
         "target_mean": float(np.mean(target)),
@@ -167,7 +290,107 @@ def distribution_metrics(
         "std_ratio": blocked_std / target_std if target_std > 0.0 else float("nan"),
         "ks_statistic": float(np.max(np.abs(blocked_cdf - target_cdf))),
         "wasserstein_1": float(wasserstein_distance(blocked, target)),
+        "js_divergence": float(js_divergence),
+        "total_variation": float(
+            0.5 * np.sum(np.abs(blocked_probability - target_probability))
+        ),
+        "below_target_q01": float(np.mean(blocked < quantiles["q01"])),
+        "below_target_q05": float(np.mean(blocked < quantiles["q05"])),
+        "below_target_q10": float(np.mean(blocked < quantiles["q10"])),
+        "above_target_q90": float(np.mean(blocked > quantiles["q90"])),
+        "above_target_q95": float(np.mean(blocked > quantiles["q95"])),
+        "above_target_q99": float(np.mean(blocked > quantiles["q99"])),
+        "inside_target_q01_q99": float(
+            np.mean((blocked >= quantiles["q01"]) & (blocked <= quantiles["q99"]))
+        ),
+        "inside_target_q05_q95": float(
+            np.mean((blocked >= quantiles["q05"]) & (blocked <= quantiles["q95"]))
+        ),
     }
+
+
+def save_kernel_observable_histograms(
+    path: Path,
+    coarse_chains: FloatArray,
+    blocked_chains: FloatArray,
+    action: Phi4Action,
+) -> dict[str, dict[str, dict[str, float]]]:
+    """Plot the ten support observables used for distribution-aware selection."""
+    coarse = {
+        "test": kernel_observable_series(coarse_chains[3], action),
+        "all": kernel_observable_series(
+            coarse_chains.reshape(-1, *coarse_chains.shape[-2:]), action
+        ),
+    }
+    blocked = {
+        "test": kernel_observable_series(blocked_chains[3], action),
+        "all": kernel_observable_series(
+            blocked_chains.reshape(-1, *blocked_chains.shape[-2:]), action
+        ),
+    }
+    metrics = {
+        name: {
+            split: distribution_metrics(
+                blocked[split][name],
+                coarse[split][name],
+            )
+            for split in ("test", "all")
+        }
+        for name in KERNEL_OBSERVABLE_NAMES
+    }
+
+    figure, axes = plt.subplots(2, 5, figsize=(22.0, 8.5))
+    for axis, name in zip(axes.reshape(-1), KERNEL_OBSERVABLE_NAMES):
+        coarse_values = coarse["test"][name]
+        blocked_values = blocked["test"][name]
+        bins = np.histogram_bin_edges(
+            np.concatenate((coarse_values, blocked_values)),
+            bins=30,
+        )
+        axis.hist(
+            coarse_values,
+            bins=bins,
+            density=True,
+            alpha=0.55,
+            color="tab:blue",
+            label=r"native coarse $\phi_c$",
+        )
+        axis.hist(
+            blocked_values,
+            bins=bins,
+            density=True,
+            alpha=0.55,
+            color="tab:orange",
+            label=r"blocked $DK\phi_f$",
+        )
+        comparison = metrics[name]["test"]
+        axis.set_title(KERNEL_OBSERVABLE_TITLES[name], fontsize=13)
+        axis.set_ylabel("density")
+        axis.tick_params(labelsize=8)
+        axis.text(
+            0.03,
+            0.96,
+            (
+                rf"$\Delta\mu/\sigma={comparison['standardized_mean_shift']:.3f}$"
+                + "\n"
+                + rf"$KS={comparison['ks_statistic']:.3f}$, "
+                + rf"$\sigma_b/\sigma_c={comparison['std_ratio']:.3f}$"
+            ),
+            transform=axis.transAxes,
+            ha="left",
+            va="top",
+            fontsize=8,
+        )
+    axes[0, 0].legend(frameon=False, fontsize=9)
+    figure.suptitle(
+        r"Held-out ensemble: native coarse $\phi_c$ vs. blocked $DK\phi_f$",
+        fontsize=18,
+    )
+    figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.95))
+    figure.savefig(path)
+    figure.savefig(path.with_suffix(".png"), dpi=180)
+    plt.close(figure)
+    return metrics
 
 
 def bootstrap_ensemble_observables(
@@ -346,13 +569,19 @@ def save_operator_distribution_figure(
                 blocked_values["test"],
             )
         )
-        bins = np.histogram_bin_edges(pooled, bins=35)
+        bins = (
+            np.histogram_bin_edges(pooled, bins=35)
+            if pooled.size
+            else np.array([0.0, 1.0])
+        )
         for values, color, linestyle in (
             (coarse_values["all"], "tab:blue", "--"),
             (blocked_values["all"], "tab:orange", "--"),
             (coarse_values["test"], "tab:blue", "-"),
             (blocked_values["test"], "tab:orange", "-"),
         ):
+            if values.size == 0:
+                continue
             axis.hist(
                 values,
                 bins=bins,
