@@ -28,3 +28,26 @@ The root `.venv/` directory is ignored by Git. There is no committed
 
 The implementation will be added under `src/rgflow/su3/` as the study is
 developed.
+
+## Naive SU(3) downsampling
+
+Install the optional Torch training dependency and run the L24 to L12
+experiment with:
+
+```bash
+.venv/bin/python -m pip install -e '.[test,train,report]'
+.venv/bin/python scripts/downsample/train.py --backend compile
+```
+
+Use `--max-configs 5 --epochs 2` for a small smoke run. Results are written
+under `artifacts/4dsu3/downsample/`, including the CNN checkpoint, feature
+cache, mean-plus-variance metrics, and diagnostic plot. Compare eager and
+compiled kernel throughput with:
+
+```bash
+.venv/bin/python scripts/downsample/benchmark.py --backend both
+```
+
+For a completed checkpoint, `scripts/downsample/evaluate.py` performs the
+eager final evaluation and PyQUDA cross-check without recompiling the training
+graph. This is useful because the complex SVD projection dominates runtime.

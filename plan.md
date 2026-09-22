@@ -1,39 +1,22 @@
 # 4D SU(3) research plan
 
-The sole target of this repository is four-dimensional SU(3) lattice gauge
-theory. The immediate objective is to build and validate an RG-assisted
-configuration sampler for the Wilson gauge action; portability to other
-theories is out of scope.
+generate reference SU(3) ensembles using heatbath + overrelaxation: 
+- L24, beta = 6.20, ref lattice spacing a = 0.13613(19) fm, actual lattice spacing
+- L12, beta = 5.80, ref lattice spacing a = 0.06775(24) fm, actual lattice spacing
 
-## Initial scope
+- L16, beta = 5.95, ref lattice spacing a = 0.10208(25) fm, actual lattice spacing a = 0.1047 fm
 
-1. Define 4D periodic SU(3) link fields and the Wilson plaquette action.
-2. Implement numerically stable staple construction, local link updates, and
-   reproducible Markov-chain sampling.
-3. Measure plaquette observables, action density, Polyakov loops, and short
-   Wilson loops, with autocorrelation and thermalization diagnostics.
-4. Establish reference ensembles at selected lattice sizes and couplings.
-5. Implement scale-two blocking and compare blocked ensembles against native
-   coarse ensembles.
-6. Develop the inverse-blocking proposal and exact Metropolis correction only
-   after the reference sampler and blocking diagnostics are trusted.
 
-## Validation requirements
 
-- Check SU(3) unitarity and determinant-one constraints after every update.
-- Verify detailed balance for local updates on small lattices.
-- Compare observables across independent chains and report effective sample
-  sizes rather than only saved-configuration counts.
-- Test every blocking or inverse-blocking step at more than one lattice size.
-- Keep generated data and scratch calculations under `artifacts/` and
-  `temp/`; neither is part of the source tree.
+## Downsampling
 
-## Milestones
+### Try the naive blocking in scripts/downsample: L24 to L12
 
-- [ ] Project skeleton and environment setup
-- [ ] SU(3) algebra and link-field representation
-- [ ] Wilson action and local reference sampler
-- [ ] Ensemble diagnostics and baseline data
-- [ ] Scale-two RG blocking
-- [ ] Inverse proposal and exact correction
-- [ ] End-to-end performance comparison
+- firstly try the stout smearing + blocking, the stout smearing is parameterized by a coefficient kernel K, optimize K to match the coarse reference lattice, the procedure is similar to the "perfect blocking" in the phi4 branch.
+   - the stout smearing is defined as U_smeared = k1 * U + k2 * staple link + ... (firstly try only the staple terms in 4 directions)
+   - the kernel K should be parameterized by a CNN for training.
+   - note that after stout smearing, we need to project the smeared link back to the SU(3) group;
+   - in this 4d case, blocking only choose 1 link in the 2^4 sublattice.
+   - "match the coarse reference lattice" is defined as the minimize the covariance-weighted mismatch of some observables, i.e. loss function in docs/2608.28581.pdf (firstly try only the plaquette, 1*2 rectangle, 2*2 square and one long-distance observable)
+
+   - use pyquda for measurements, use pytorch for CNN and training.

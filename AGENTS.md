@@ -11,3 +11,5 @@
 - Minimize branching. Prefer clear data flow and early returns over nested conditions or long `if`/`elif` chains.
 - Do not add defensive validation or exception handling by default. Check inputs only at necessary external boundaries or when explicitly required.
 - Avoid handling hypothetical edge cases that are outside the stated requirements.
+
+- Coding style should be simple, easy to read.
