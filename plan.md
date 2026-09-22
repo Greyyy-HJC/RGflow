@@ -1,8 +1,8 @@
 # 4D SU(3) research plan
 
 generate reference SU(3) ensembles using heatbath + overrelaxation: 
-- L24, beta = 6.20, ref lattice spacing a = 0.13613(19) fm, actual lattice spacing
-- L12, beta = 5.80, ref lattice spacing a = 0.06775(24) fm, actual lattice spacing
+- L24, beta = 6.20, ref lattice spacing a = 0.13613(19) fm, actual lattice spacing a = 0.07224 fm
+- L12, beta = 5.80, ref lattice spacing a = 0.06775(24) fm, actual lattice spacing a = 0.13732 fm
 
 - L16, beta = 5.95, ref lattice spacing a = 0.10208(25) fm, actual lattice spacing a = 0.1047 fm
 
