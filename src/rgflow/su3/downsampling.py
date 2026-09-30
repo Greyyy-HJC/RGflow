@@ -292,8 +292,9 @@ class PolynomialStoutKernel(nn.Module):
     def uses_hook(self) -> bool:
         return self.hook_coefficients.numel() != 0
 
-    def forward(self, links: torch.Tensor) -> torch.Tensor:
-        return polynomial_smear_matrix(links, self.coefficients, self.hook_coefficients, self.local_coefficients)
+    def forward(self, links: torch.Tensor, *, projection_device: str | None = None) -> torch.Tensor:
+        return polynomial_smear_matrix(links, self.coefficients, self.hook_coefficients,
+                                       self.local_coefficients, projection_device=projection_device)
 
     @torch.no_grad()
     def project_parameters(self) -> None:
@@ -338,6 +339,7 @@ def _covariant_link_laplacian(links: torch.Tensor, field: torch.Tensor) -> torch
 def polynomial_smear_matrix(
     links: torch.Tensor, coefficients: torch.Tensor, hook_coefficients: torch.Tensor | None = None,
     local_coefficients: torch.Tensor | None = None,
+    *, projection_device: str | None = None,
 ) -> torch.Tensor:
     """Construct and project ``[1 + a1 L + ... + a4 L^4] U``."""
     field = links
@@ -367,7 +369,7 @@ def polynomial_smear_matrix(
         for coefficient, hook_field in zip(hook_coefficients, hook_fields):
             hook_result = hook_result + coefficient * hook_field
         result = result + hook_result
-    return su3_polar_projection(result)
+    return su3_polar_projection(result, svd_device=projection_device)
 
 
 def polynomial_blocking_basis(links: torch.Tensor, *, hook: bool = False, local: bool = False) -> torch.Tensor:
@@ -612,11 +614,14 @@ def weights_from_path_logits(logits: torch.Tensor) -> torch.Tensor:
     return torch.softmax(logits, dim=2)
 
 
-def su3_polar_projection(matrix: torch.Tensor) -> torch.Tensor:
+def su3_polar_projection(matrix: torch.Tensor, *, svd_device: str | None = None) -> torch.Tensor:
     """Project arbitrary complex 3x3 matrices to the nearest SU(3) matrix."""
     # A fixed, sub-ulp-for-links diagonal perturbation removes the undefined
     # singular-vector basis at exactly unitary inputs (notably the identity),
     # while leaving the polar factor unchanged to the requested precision.
+    output_device = matrix.device
+    if svd_device is not None:
+        matrix = matrix.to(svd_device)
     dtype = matrix.real.dtype
     perturbation = torch.diag(
         torch.arange(1, 4, device=matrix.device, dtype=dtype)
@@ -627,7 +632,7 @@ def su3_polar_projection(matrix: torch.Tensor) -> torch.Tensor:
     unitary = unitary_left @ unitary_right
     determinant = torch.linalg.det(unitary)
     phase = torch.exp(-1j * torch.angle(determinant) / 3.0)
-    return unitary * phase[..., None, None]
+    return (unitary * phase[..., None, None]).to(output_device)
 
 
 def weights_from_logits(logits: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:

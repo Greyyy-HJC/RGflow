@@ -13,6 +13,7 @@ from .downsampling import (
     transform_and_block,
 )
 from .observables import observable_names, observable_vector_torch
+from .upsampling import SU3ConditionalFlow, constrained_haar_lift, haar_links
 
 __all__ = [
     "observable_names",
@@ -27,4 +28,7 @@ __all__ = [
     "square_sum",
     "hook_sum",
     "GaugeEquivariantFieldTransform",
+    "SU3ConditionalFlow",
+    "constrained_haar_lift",
+    "haar_links",
 ]

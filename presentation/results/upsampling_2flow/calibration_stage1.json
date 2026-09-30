@@ -1,0 +1,30 @@
+{
+  "best_offsets": [
+    -0.7880528311351808,
+    0.7845418837188293,
+    0.05698517138168617,
+    0.19762250734823242,
+    0.4876267236843508,
+    0.036422463266862284
+  ],
+  "best_validation_loss": 187668.10973859052,
+  "evaluations": 8,
+  "message": "Stopped after diminishing validation improvements; restored best recorded trial.",
+  "seed": 1234,
+  "train_ids": [
+    0,
+    1,
+    2,
+    5
+  ],
+  "validation_ids": [
+    3,
+    8,
+    13,
+    18,
+    23,
+    28,
+    33,
+    38
+  ]
+}

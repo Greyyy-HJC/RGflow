@@ -6,6 +6,9 @@ from typing import Iterable, Sequence
 
 import numpy as np
 import torch
+from torch.utils.checkpoint import checkpoint
+
+from .linalg import matrix_product
 
 
 def _direction_axis(links: torch.Tensor) -> int:
@@ -49,7 +52,7 @@ def path_product(links: torch.Tensor, path: Iterable[int]) -> torch.Tensor:
             start[direction] -= 1
             factor = _dagger(_shift(link, [axis - 1 for axis in site_axes], start))
             offset[direction] -= 1
-        result = factor if result is None else result @ factor
+        result = factor if result is None else matrix_product(result, factor)
     if result is None:
         raise ValueError("path must not be empty")
     return result
@@ -63,14 +66,27 @@ def _normalized_complex_trace(matrix: torch.Tensor) -> torch.Tensor:
     return torch.diagonal(matrix, dim1=-2, dim2=-1).sum(-1) / 3.0
 
 
-def _loop_mean(links: torch.Tensor, path: Sequence[int]) -> torch.Tensor:
-    values = _normalized_trace(path_product(links, path))
+def _loop_mean(links: torch.Tensor, path: Sequence[int], *, checkpoint_path: bool = False) -> torch.Tensor:
+    matrix = checkpoint(path_product, links, path, use_reentrant=False) if checkpoint_path else path_product(links, path)
+    values = _normalized_trace(matrix)
     if links.ndim == 8:
         return values.mean(dim=tuple(range(1, values.ndim)))
     return values.mean()
 
 
-def observable_vector_torch(links: torch.Tensor) -> torch.Tensor:
+def _polyakov_mean(links: torch.Tensor, direction: int) -> torch.Tensor:
+    # Cyclicity makes the trace independent of the origin along the winding
+    # direction. Compute each line once instead of once per lattice site.
+    link = links.select(_direction_axis(links), direction)
+    axis = _site_axis(links, direction) - 1
+    product = link.select(axis, 0)
+    for position in range(1, link.shape[axis]):
+        product = matrix_product(product, link.select(axis, position))
+    trace = _normalized_complex_trace(product)
+    return trace.mean(dim=tuple(range(1, trace.ndim))) if links.ndim == 8 else trace.mean()
+
+
+def observable_vector_torch(links: torch.Tensor, *, checkpoint_loops: bool = False) -> torch.Tensor:
     """Return plaquette, 1x2 rectangle, 2x2 square, and Polyakov second moment."""
     plaquettes = []
     rectangles = []
@@ -78,22 +94,16 @@ def observable_vector_torch(links: torch.Tensor) -> torch.Tensor:
     polyakov = []
     for mu in range(4):
         for nu in range(mu + 1, 4):
-            plaquettes.append(_loop_mean(links, (mu, nu, mu + 4, nu + 4)))
+            plaquettes.append(_loop_mean(links, (mu, nu, mu + 4, nu + 4), checkpoint_path=checkpoint_loops))
             squares.append(
-                _loop_mean(links, (mu, mu, nu, nu, mu + 4, mu + 4, nu + 4, nu + 4))
+                _loop_mean(links, (mu, mu, nu, nu, mu + 4, mu + 4, nu + 4, nu + 4), checkpoint_path=checkpoint_loops)
             )
-        polyakov_loop = _normalized_complex_trace(
-            path_product(links, (mu,) * links.shape[_site_axis(links, mu)])
-        )
-        if links.ndim == 8:
-            polyakov_mean = polyakov_loop.mean(dim=tuple(range(1, polyakov_loop.ndim)))
-        else:
-            polyakov_mean = polyakov_loop.mean()
+        polyakov_mean = checkpoint(_polyakov_mean, links, mu, use_reentrant=False) if checkpoint_loops else _polyakov_mean(links, mu)
         polyakov.append(torch.abs(polyakov_mean) ** 2)
         for nu in range(4):
             if mu != nu:
                 rectangles.append(
-                    _loop_mean(links, (mu, mu, nu, mu + 4, mu + 4, nu + 4))
+                    _loop_mean(links, (mu, mu, nu, mu + 4, mu + 4, nu + 4), checkpoint_path=checkpoint_loops)
                 )
     if links.ndim == 8:
         return torch.stack(
