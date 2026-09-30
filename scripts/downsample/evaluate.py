@@ -1,30 +1,32 @@
 #!/usr/bin/env python3
-"""Evaluate a completed CNN checkpoint without recompiling the training graph."""
+"""Evaluate a completed stout, polynomial stout, or field-transform checkpoint."""
 
 from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
 import json
 from pathlib import Path
 
 import numpy as np
 import torch
 
-from rgflow.su3.downsampling import LinkCoefficientCNN, block_links
+from rgflow.su3.downsampling import GaugeEquivariantFieldTransform, PolynomialStoutKernel, StoutKernel, block_links
 from rgflow.su3.observables import observable_vector_torch
 from rgflow.su3.training import (
-    FeatureCache,
-    _baseline_logits,
     _covariance_inverse,
-    _metric_record,
     _link_batches,
+    _metric_record,
     _plot_diagnostics,
     _projected_blocked_observables,
+    _stout_blocked_observables,
     _split_paths,
+    distribution_acceptance,
     ensemble_paths,
     measure_blocked_with_pyquda,
+    measure_straight_blocked_with_pyquda,
+    measure_stout_with_pyquda,
+    measure_polynomial_with_pyquda,
     observable_names,
     split_indices,
 )
@@ -33,7 +35,8 @@ from rgflow.su3.training import (
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_FINE = ROOT / "artifacts" / "4dsu3" / "L24_beta6p20"
 DEFAULT_COARSE = ROOT / "artifacts" / "4dsu3" / "L12_beta5p80"
-DEFAULT_RUN = ROOT / "artifacts" / "4dsu3" / "downsample" / "L24_beta6p20_to_L12_beta5p80"
+DEFAULT_RUN = ROOT / "artifacts" / "4dsu3" / "downsample" / "L24_beta6p20_to_L12_beta5p80_stout_v3"
+DEFAULT_REFERENCE_RUN = ROOT / "artifacts" / "4dsu3" / "downsample" / "L24_beta6p20_to_L12_beta5p80_cnn_v2"
 
 
 def _json_ready(value):
@@ -52,39 +55,12 @@ def _json_ready(value):
     return value
 
 
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def _history_rows() -> list[dict]:
-    # Captured from the eight completed training epochs before the final eager evaluation.
-    values = [
-        (1, 9.17550e6, 9.16673e6, 9.17484e6, 653.979),
-        (2, 9.16077e6, 9.15193e6, 9.16012e6, 653.555),
-        (3, 9.14598e6, 9.13706e6, 9.14533e6, 653.127),
-        (4, 9.13112e6, 9.12211e6, 9.13047e6, 652.699),
-        (5, 9.11618e6, 9.10710e6, 9.11553e6, 652.267),
-        (6, 9.10116e6, 9.09199e6, 9.10051e6, 651.833),
-        (7, 9.08608e6, 9.07682e6, 9.08542e6, 651.397),
-        (8, 9.07090e6, 9.06156e6, 9.07025e6, 650.958),
-    ]
-    return [
-        {
-            "epoch": epoch,
-            "train_loss": train_loss,
-            "train_mean_loss": train_mean,
-            "train_variance_loss": variance,
-            "validation_loss": validation_loss,
-            "validation_mean_loss": float("nan"),
-            "validation_variance_loss": float("nan"),
-            "learning_rate": 0.003,
-        }
-        for epoch, train_loss, validation_loss, train_mean, variance in values
-    ]
+def _history(run: Path) -> list[dict[str, float]]:
+    if (run / "fit_history.json").exists():
+        rows = json.loads((run / "fit_history.json").read_text(encoding="utf-8"))
+        return [{"epoch": row["evaluation"] + 1, "train_loss": row["loss"], "validation_loss": np.nan} for row in rows]
+    with (run / "history.csv").open(newline="", encoding="utf-8") as stream:
+        return [{key: float(value) for key, value in row.items()} for row in csv.DictReader(stream)]
 
 
 def main() -> None:
@@ -92,45 +68,86 @@ def main() -> None:
     parser.add_argument("--fine-dir", type=Path, default=DEFAULT_FINE)
     parser.add_argument("--coarse-dir", type=Path, default=DEFAULT_COARSE)
     parser.add_argument("--run", type=Path, default=DEFAULT_RUN)
+    parser.add_argument("--reference-run", type=Path, default=DEFAULT_REFERENCE_RUN)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
-    parser.add_argument("--batch-size", type=int, choices=(1, 2), default=2)
+    parser.add_argument("--batch-size", type=int, choices=(1, 2, 4, 8), default=1)
+    parser.add_argument("--max-configs", type=int, default=None, help="evaluate a prefix matching a smoke-test run")
     parser.add_argument("--reuse-values", action="store_true", help="reuse observable_distributions.npz from a completed evaluation")
     args = parser.parse_args()
 
-    fine_paths, fine_manifest = ensemble_paths(args.fine_dir.resolve())
+    fine_paths, _ = ensemble_paths(args.fine_dir.resolve())
     coarse_paths, coarse_manifest = ensemble_paths(args.coarse_dir.resolve())
+    if args.max_configs is not None:
+        if args.max_configs < 5 or args.max_configs > len(fine_paths):
+            raise SystemExit("max-configs must be at least five and no larger than the ensemble")
+        fine_paths = fine_paths[: args.max_configs]
+        coarse_paths = coarse_paths[: args.max_configs]
     run = args.run.resolve()
     lattice = list(map(int, coarse_manifest["lattice_size"]))
     reference = np.load(run / "reference_observables.npz")["observables"]
     if reference.shape != (len(coarse_paths), 4):
         raise SystemExit(f"reference shape {reference.shape} does not match ensemble size {len(coarse_paths)}")
+    reference_metrics = json.loads((args.reference_run.resolve() / "metrics.json").read_text(encoding="utf-8"))
+    reference_test_loss = float(reference_metrics["splits"]["test"]["trained"]["loss"])
 
     device = torch.device(args.device)
     indices = split_indices(len(fine_paths))
-    cache = FeatureCache(run / "feature_cache")
     baseline_path = run / "baseline_observables.npz"
     if baseline_path.exists():
         baseline_all = np.load(baseline_path)["observables"]
     else:
-        baseline_values = []
+        values = []
         with torch.no_grad():
-            for links, _ in _link_batches(fine_paths, device, None, False, args.batch_size):
-                baseline_values.append(observable_vector_torch(block_links(links)))
-        baseline_all = torch.cat(baseline_values).cpu().numpy()
+            for links in _link_batches(fine_paths, device, args.batch_size):
+                values.append(observable_vector_torch(block_links(links)))
+        baseline_all = torch.cat(values).cpu().numpy()
         np.savez(baseline_path, observables=baseline_all)
 
-    model = LinkCoefficientCNN().to(device)
+    kernel = json.loads((run / "kernel.json").read_text(encoding="utf-8"))
+    architecture = kernel["architecture"]
+    if architecture["class"] == "StoutKernel":
+        model = StoutKernel(
+            initial_weights=tuple(float(value) for value in architecture["initial_weights"])
+        ).to(device)
+        method = "stout"
+    elif architecture["class"] == "PolynomialStoutKernel":
+        model = PolynomialStoutKernel(
+            initial_coefficients=tuple(float(value) for value in architecture["initial_coefficients"]),
+            hook_coefficients=tuple(float(value) for value in architecture.get("initial_hook_coefficients", ())),
+            local_coefficients=tuple(float(value) for value in architecture.get("initial_local_coefficients", ())),
+        ).to(device)
+        method = "stout-polynomial"
+    else:
+        model = GaugeEquivariantFieldTransform(
+            hidden_channels=int(architecture["hidden_channels"]),
+            step_scale=float(architecture["step_scale"]),
+            initial_output_scale=float(architecture["initial_output_scale"]),
+            flow_steps=int(architecture.get("flow_steps", 1)),
+        ).to(device)
+        method = "field-transform"
     checkpoint = torch.load(run / "kernel.pt", map_location=device, weights_only=True)
     model.load_state_dict(checkpoint["state_dict"])
+    model.eval()
     if args.reuse_values:
         saved = np.load(run / "observable_distributions.npz")
         trained_all = np.empty_like(baseline_all)
         for split in indices:
             trained_all[indices[split]] = saved[f"trained_{split}"]
     else:
-        trained_all = _projected_blocked_observables(
-            fine_paths, model, device, requires_grad=False, feature_cache=cache, batch_size=args.batch_size
-        ).cpu().numpy()
+        if method == "stout":
+            trained_all = _stout_blocked_observables(
+                fine_paths, model, device, requires_grad=False, batch_size=args.batch_size
+            ).cpu().numpy()
+        elif method == "stout-polynomial":
+            from rgflow.su3.training import _polynomial_blocked_observables
+
+            trained_all = _polynomial_blocked_observables(
+                fine_paths, model, device, requires_grad=False, batch_size=args.batch_size
+            ).cpu().numpy()
+        else:
+            trained_all = _projected_blocked_observables(
+                fine_paths, model, device, requires_grad=False, batch_size=args.batch_size
+            ).cpu().numpy()
 
     targets = {split: reference[indices[split]] for split in indices}
     baseline = {split: baseline_all[indices[split]] for split in indices}
@@ -144,21 +161,25 @@ def main() -> None:
         }
         for split in indices
     }
-    test_pass = records["test"]["trained"]["loss"] < records["test"]["baseline"]["loss"]
+    test_pass = records["test"]["trained"]["chi2"] < records["test"]["baseline"]["chi2"]
+    reference_pass = records["test"]["trained"]["chi2"] < reference_test_loss
     metrics = {
         "observables": observable_names(),
-        "acceptance": {"test_trained_loss_below_baseline": test_pass, "all": test_pass},
+        "acceptance": {
+            "test_trained_chi2_below_baseline": test_pass,
+            "test_trained_loss_below_baseline": test_pass,
+            "test_trained_chi2_below_reference_cnn": reference_pass,
+            "test_trained_loss_below_reference_cnn": reference_pass,
+            "reference_cnn_test_loss": reference_test_loss,
+            **distribution_acceptance(records["test"]["trained"]),
+            "all": test_pass and reference_pass and distribution_acceptance(records["test"]["trained"])["distribution_match"],
+        },
         "splits": records,
         "best_epoch": int(checkpoint["epoch"]),
+        "chi2_definition": "covariance-weighted mean mismatch plus standardized log-variance mismatch",
         "loss_definition": "covariance-weighted mean plus standardized log-variance mismatch",
     }
     (run / "metrics.json").write_text(json.dumps(_json_ready(metrics), indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-    rows = _history_rows()
-    with (run / "history.csv").open("w", newline="", encoding="utf-8") as stream:
-        writer = csv.DictWriter(stream, fieldnames=rows[0].keys())
-        writer.writeheader()
-        writer.writerows(rows)
 
     np.savez(
         run / "observable_distributions.npz",
@@ -167,37 +188,40 @@ def main() -> None:
         baseline_train=baseline["train"], baseline_validation=baseline["validation"],
         trained_train=trained["train"], trained_validation=trained["validation"],
     )
-    _plot_diagnostics(run / "diagnostics.pdf", rows, {"reference": targets["test"], "baseline": baseline["test"], "downsampled": trained["test"]}, observable_names())
+    _plot_diagnostics(
+        run / "diagnostics.pdf", _history(run),
+        {"reference": targets["test"], "baseline": baseline["test"], "downsampled": trained["test"]},
+        observable_names(),
+    )
 
     from pyquda_utils import core
+
     core.init(None, lattice, backend="numpy", resource_path=str(run / ".quda-cache"))
-    pyquda_trained, trained_errors = measure_blocked_with_pyquda(
-        _split_paths(fine_paths, indices, "test"), model, lattice, device, cache
+    if method == "stout":
+        pyquda_trained, trained_errors = measure_stout_with_pyquda(
+            _split_paths(fine_paths, indices, "test"), model, lattice, device
+        )
+    elif method == "stout-polynomial":
+        pyquda_trained, trained_errors = measure_polynomial_with_pyquda(
+            _split_paths(fine_paths, indices, "test"), model, lattice, device
+        )
+    else:
+        pyquda_trained, trained_errors = measure_blocked_with_pyquda(
+            _split_paths(fine_paths, indices, "test"), model, lattice, device
+        )
+    pyquda_baseline, baseline_errors = measure_straight_blocked_with_pyquda(
+        _split_paths(fine_paths, indices, "test"), lattice, device
     )
     metrics["pyquda_crosscheck"] = {
         "trained_max_abs_observable_difference": float(np.max(np.abs(trained["test"] - pyquda_trained))),
+        "baseline_max_abs_observable_difference": float(np.max(np.abs(baseline["test"] - pyquda_baseline))),
         "trained_max_unitarity_error": trained_errors[0],
         "trained_max_determinant_error": trained_errors[1],
+        "baseline_max_unitarity_error": baseline_errors[0],
+        "baseline_max_determinant_error": baseline_errors[1],
     }
     (run / "metrics.json").write_text(json.dumps(_json_ready(metrics), indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-    kernel = {
-        "type": "SU3_APE_style_local_CNN_path_convolution",
-        "architecture": {"class": "LinkCoefficientCNN", "hidden_channels": 16, "output_channels": 3},
-        "path_channels": ["straight", "six_staples", "six_transverse_1x2_rectangles"],
-        "projection": "polar SVD projection followed by determinant-one phase correction",
-        "blocking": "all-even anchors, product of two projected links",
-        "reversibility": "not exact; projection and factor-two blocking are lossy",
-        "observables": observable_names(), "data_split": indices, "best_epoch": int(checkpoint["epoch"]),
-        "optimizer": {"name": "Adam", "learning_rate": 0.003, "epochs": 8, "patience": 8, "seed": 1234, "batch_size": args.batch_size},
-        "backend": {"requested": "compile", "used": "compile", "used_for_training": "compile", "used_for_evaluation": "eager", "compiled": True},
-        "input_pipeline": "NERSC reader with one-configuration threaded prefetch and pinned host-to-CUDA transfer",
-        "feature_cache": {"directory": cache.directory, "hits": cache.hits, "misses": cache.misses},
-        "covariance": covariance, "variance_scale": variance_scale,
-        "sources": {"fine_manifest": fine_manifest, "coarse_manifest": coarse_manifest, "fine_sha256": [_sha256(path) for path in fine_paths], "coarse_sha256": [_sha256(path) for path in coarse_paths]},
-    }
-    (run / "kernel.json").write_text(json.dumps(_json_ready(kernel), indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(f"Evaluation complete: test trained={records['test']['trained']['loss']:.6g}, baseline={records['test']['baseline']['loss']:.6g}, pass={test_pass}")
+    print(f"Evaluation complete: test trained={records['test']['trained']['loss']:.6g}, pass={metrics['acceptance']['all']}")
 
 
 if __name__ == "__main__":

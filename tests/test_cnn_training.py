@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from rgflow.su3.training import _covariance_inverse, _loss_coefficients, _stats
+from rgflow.su3.training import _covariance_inverse, _loss_coefficients, _metric_record, _stats, distribution_acceptance
 
 
 def test_mean_variance_surrogate_gradient_matches_full_loss() -> None:
@@ -16,7 +16,7 @@ def test_mean_variance_surrogate_gradient_matches_full_loss() -> None:
     inverse_tensor = torch.as_tensor(inverse, dtype=torch.float64)
     target_mean_tensor = torch.as_tensor(target_mean, dtype=torch.float64)
     target_log_variance_tensor = torch.as_tensor(target_log_variance, dtype=torch.float64)
-    variance_scale = torch.ones(4, dtype=torch.float64)
+    variance_scale = torch.tensor([0.1, 0.3, 0.5, 0.8], dtype=torch.float64)
 
     coefficients, _ = _loss_coefficients(
         values,
@@ -28,6 +28,17 @@ def test_mean_variance_surrogate_gradient_matches_full_loss() -> None:
     mean = values.mean(dim=0)
     variance = values.var(dim=0, unbiased=True)
     full_loss = (mean - target_mean_tensor) @ inverse_tensor @ (mean - target_mean_tensor)
-    full_loss = full_loss + (torch.log(variance + 1.0e-12) - target_log_variance_tensor).square().sum()
+    full_loss = full_loss + ((torch.log(variance + 1.0e-12) - target_log_variance_tensor) / variance_scale).square().sum()
     gradient = torch.autograd.grad(full_loss, values)[0]
     torch.testing.assert_close(coefficients, gradient, rtol=1.0e-10, atol=1.0e-10)
+
+
+def test_improvement_over_baseline_does_not_imply_distribution_match() -> None:
+    target = np.column_stack([np.linspace(-1, 1, 40)] * 4)
+    _, inverse = _covariance_inverse(target, target, 0.1)
+    shifted = _metric_record(target + 2.0, target, inverse)
+    assert not distribution_acceptance(shifted)["distribution_match"]
+    narrowed = _metric_record(target * 0.5, target, inverse)
+    assert not distribution_acceptance(narrowed)["distribution_match"]
+    matched = _metric_record(target, target, inverse)
+    assert distribution_acceptance(matched)["distribution_match"]
