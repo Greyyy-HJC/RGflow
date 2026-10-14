@@ -21,30 +21,48 @@ from rgflow.su3.training import (
     _covariance_inverse, _loss_coefficients, _metric_record, _stats, _write_json,
     distribution_acceptance, ensemble_paths, split_indices,
 )
-from rgflow.su3.upsampling import SU3ConditionalFlow, constrained_haar_lift
+from rgflow.su3.upsampling import (
+    EQUIVARIANT_COUPLING, STABLE_COUPLING, LEGACY_COUPLING, SU3ConditionalFlow, constrained_haar_lift, flow_roundtrip_check,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = ROOT / "artifacts" / "4dsu3"
 DEFAULT_DOWN = ARTIFACTS / "downsample" / "L24_beta6p20_to_L12_beta5p80_polynomial_local_ls_v2"
-DEFAULT_RUN = ARTIFACTS / "upsample" / "L12_to_L24_2flow_v1"
+DEFAULT_RUN = ARTIFACTS / "upsample" / "L12_to_L24_2flow_equivariant_v2"
 
 
 def load_links(path, device):
     return torch.from_numpy(read_nersc_gauge(path)[0]).to(device)
 
 
-def moment_loss(values, reference):
+def moment_loss(values, reference, args):
     # Per-target-sigma mean loss + log-width loss. Float64 reductions resolve
     # the narrow L24 distributions without subtractive float32 cancellation.
-    _, inverse = _covariance_inverse(reference, reference, .1)
+    if args.mean_metric == "diagonal":
+        inverse = np.diag(1./reference.astype(np.float64).var(0, ddof=1))
+    else:
+        _, inverse = _covariance_inverse(reference, reference, .1)
     mean, _, log_variance = _stats(reference)
     return _loss_coefficients(
         values.double(), torch.as_tensor(mean, device=values.device),
         torch.as_tensor(log_variance, device=values.device),
         torch.as_tensor(inverse, device=values.device),
-        torch.ones(4, dtype=torch.float64, device=values.device),
+        torch.full((4,), args.variance_weight**-.5, dtype=torch.float64, device=values.device),
     )
+
+
+def check_training_update(flow, optimizer, best_state, args):
+    coarse = None
+    if args.stability_coarse_file is not None:
+        coarse = torch.load(args.stability_coarse_file, map_location="cpu", weights_only=True)["coarse"]
+    report = flow_roundtrip_check(flow, coarse) if args.require_stable_inverse else {"passed": True}
+    if not report["passed"]:
+        flow.load_state_dict(best_state)
+        optimizer.state.clear()
+        for group in optimizer.param_groups:
+            group["lr"] *= .5
+    return report
 
 
 def fit_conditional_likelihood(flow1, train_ids, val_ids, smeared_field, args, history, save):
@@ -79,7 +97,9 @@ def fit_conditional_likelihood(flow1, train_ids, val_ids, smeared_field, args, h
             optimizer.step()
             losses.append(float(nll.detach()))
             print(f"flow1 epoch={epoch+1} cfg={index} nll/link={losses[-1]:.6g}", flush=True)
+        stability = check_training_update(flow1, optimizer, best_state, args)
         record = {"phase": "conditional_nll", "epoch": epoch_offset+epoch+1,
+                  "stability": stability,
                   "train_loss": np.mean(losses), "validation_loss": validation_nll(),
                   "seconds": time.time()-started}
         if record["validation_loss"] < best_loss:
@@ -116,10 +136,11 @@ def fit_smeared_operators(flow1, train_ids, val_ids, smeared_field, reference, d
                 generator = torch.Generator(device=device).manual_seed(args.seed+50000+index)
                 field, _ = flow1.sample(coarse, generator=generator, compute_logdet=False)
                 values.append(observable_vector_torch(field))
-        return moment_loss(torch.stack(values), reference["validation"]["smeared"])[1]["loss"]
+        return moment_loss(torch.stack(values), reference["validation"]["smeared"], args)[1]["loss"]
 
     best_loss = validation_loss()
     best_state = copy.deepcopy(flow1.state_dict())
+    print(f"Flow 1: {args.smeared_moment_epochs} moment epochs; initial validation loss={best_loss:.6g}", flush=True)
     for epoch in range(args.smeared_moment_epochs):
         started = time.time()
         ids = np.random.choice(train_ids, min(args.moment_configs, len(train_ids)), replace=False)
@@ -135,7 +156,7 @@ def fit_smeared_operators(flow1, train_ids, val_ids, smeared_field, reference, d
                 fields.append(field.cpu())
                 values.append(observable_vector_torch(field))
         del base, field
-        coefficients, losses = moment_loss(torch.stack(values), reference["train"]["smeared"])
+        coefficients, losses = moment_loss(torch.stack(values), reference["train"]["smeared"], args)
         optimizer.zero_grad(set_to_none=True)
         for row, (base, source) in enumerate(zip(inputs, fields)):
             field = source.to(device)
@@ -149,13 +170,18 @@ def fit_smeared_operators(flow1, train_ids, val_ids, smeared_field, reference, d
             field.backward(gradient)
             del field, gradient
             flow1.eval()
+            if epoch == 0:
+                print(f"Flow 1: epoch {epoch_offset+1} gradient {row+1}/{len(inputs)} complete", flush=True)
         torch.nn.utils.clip_grad_norm_(flow1.parameters(), 100.)
         optimizer.step()
+        stability = check_training_update(flow1, optimizer, best_state, args)
         val_loss = validation_loss()
         if val_loss < best_loss:
             best_loss = val_loss
             best_state = copy.deepcopy(flow1.state_dict())
         record = {"phase": "smeared_moments", "epoch": epoch_offset+epoch+1,
+                  "stability": stability,
+                  "mean_metric": args.mean_metric, "variance_weight": args.variance_weight,
                   "train_loss": losses["loss"], "validation_loss": val_loss,
                   "mean": torch.stack(values).mean(0).cpu().numpy(),
                   "seconds": time.time()-started}
@@ -167,14 +193,29 @@ def fit_smeared_operators(flow1, train_ids, val_ids, smeared_field, reference, d
 
 
 
-def fit_paired_transport(flow2, train_ids, paths, smeared_field, device, args, history, save):
+def fit_paired_transport(flow2, train_ids, val_ids, paths, smeared_field, device, args, history, save):
     if args.transport_epochs == 0:
         return
     # Flow 2: paired transport initialization; preserves all fine DOFs.
     flow2.train()
     optimizer = torch.optim.Adam(flow2.parameters(), lr=args.learning_rate)
     epoch_offset = max([row["epoch"] for row in history if row["phase"] == "paired_transport"], default=0)
+
+    def validation_loss():
+        flow2.eval()
+        with torch.no_grad():
+            values = []
+            for index in val_ids:
+                fine = load_links(paths[index], device)
+                reconstructed, _ = flow2(smeared_field(int(index)), compute_logdet=False)
+                values.append(float((reconstructed-fine).abs().square().mean()))
+        return float(np.mean(values))
+
+    best_loss = validation_loss()
+    best_state = copy.deepcopy(flow2.state_dict())
     for epoch in range(args.transport_epochs):
+        flow2.train()
+        started = time.time()
         losses = []
         for index in np.random.permutation(train_ids):
             with torch.no_grad():
@@ -188,8 +229,20 @@ def fit_paired_transport(flow2, train_ids, paths, smeared_field, device, args, h
             optimizer.step()
             losses.append(float(loss.detach()))
             print(f"flow2 paired epoch={epoch+1} cfg={index} loss={losses[-1]:.6g}", flush=True)
-        history.append({"phase": "paired_transport", "epoch": epoch_offset+epoch+1, "train_loss": np.mean(losses)})
+        stability = check_training_update(flow2, optimizer, best_state, args)
+        val_loss = validation_loss()
+        if val_loss < best_loss:
+            best_loss = val_loss
+            best_state = copy.deepcopy(flow2.state_dict())
+        record = {"phase": "paired_transport", "epoch": epoch_offset+epoch+1,
+                  "stability": stability,
+                  "train_loss": np.mean(losses), "validation_loss": val_loss,
+                  "seconds": time.time()-started}
+        history.append(record)
         save()
+        print(record, flush=True)
+    flow2.load_state_dict(best_state)
+    save()
 
 
 
@@ -232,10 +285,11 @@ def fit_fine_operators(flow1, flow2, train_ids, val_ids, smeared_field, referenc
                 smeared = generated_input(index, args.seed+20000+index)
                 fine, _ = flow2(smeared, compute_logdet=False)
                 values.append(observable_vector_torch(fine))
-        return moment_loss(torch.stack(values), reference["validation"]["fine"])[1]["loss"]
+        return moment_loss(torch.stack(values), reference["validation"]["fine"], args)[1]["loss"]
 
     best_loss = validation_loss()
 
+    print(f"Flow 2: {args.moment_epochs} moment epochs; initial validation loss={best_loss:.6g}", flush=True)
     for epoch in range(args.moment_epochs):
         started = time.time()
         ids = np.random.choice(train_ids, min(args.fine_moment_configs, len(train_ids)), replace=False)
@@ -252,7 +306,7 @@ def fit_fine_operators(flow1, flow2, train_ids, val_ids, smeared_field, referenc
                 fields.append(fine.cpu())
                 values.append(observable_vector_torch(fine))
         del smeared, fine
-        coefficients, losses = moment_loss(torch.stack(values), reference["train"]["fine"])
+        coefficients, losses = moment_loss(torch.stack(values), reference["train"]["fine"], args)
         optimizer.zero_grad(set_to_none=True)
         flow2.train()
         for row, (source, field) in enumerate(zip(inputs, fields)):
@@ -264,14 +318,19 @@ def fit_fine_operators(flow1, flow2, train_ids, val_ids, smeared_field, referenc
             fine, _ = flow2(source.to(device), compute_logdet=False)
             fine.backward(gradient)
             del fine, gradient
+            if epoch == 0:
+                print(f"Flow 2: epoch {epoch_offset+1} gradient {row+1}/{len(inputs)} complete", flush=True)
         torch.nn.utils.clip_grad_norm_(flow2.parameters(), 100.)
         optimizer.step()
+        stability = check_training_update(flow2, optimizer, best_state, args)
         # Independent validation latent seeds, fixed across epochs.
         val_loss = validation_loss()
         if val_loss < best_loss:
             best_loss = val_loss
             best_state = copy.deepcopy(flow2.state_dict())
         record = {"phase": "generated_moments", "epoch": epoch_offset+epoch+1,
+                  "stability": stability,
+                  "mean_metric": args.mean_metric, "variance_weight": args.variance_weight,
                   "train_loss": losses["loss"], "validation_loss": val_loss,
                   "mean": torch.stack(values).mean(0).cpu().numpy(),
                   "seconds": time.time()-started}
@@ -289,6 +348,8 @@ def main():
     parser.add_argument("--downsampling-run", type=Path, default=DEFAULT_DOWN)
     parser.add_argument("--output", type=Path, default=DEFAULT_RUN)
     parser.add_argument("--device", default="cuda")
+    parser.add_argument("--coupling", choices=(EQUIVARIANT_COUPLING, STABLE_COUPLING, LEGACY_COUPLING),
+                        default=EQUIVARIANT_COUPLING)
     parser.add_argument("--sweeps", type=int, default=8)
     parser.add_argument("--fine-sweeps", type=int, default=2)
     parser.add_argument("--epochs", type=int, default=4)
@@ -301,7 +362,14 @@ def main():
     parser.add_argument("--fine-moment-configs", type=int, default=12)
     parser.add_argument("--test-configs", type=int, default=0, help="0 means full held-out test")
     parser.add_argument("--learning-rate", type=float, default=.01)
+    parser.add_argument("--mean-metric", choices=("covariance", "diagonal"), default="covariance")
+    parser.add_argument("--variance-weight", type=float, default=1.)
+    parser.add_argument("--require-stable-inverse", action="store_true",
+                        help="reject numerically unstable updates and reduce their learning rates")
+    parser.add_argument("--stability-coarse-file", type=Path,
+                        help="add an actual-volume roundtrip check using this validation coarse field")
     parser.add_argument("--seed", type=int, default=1234)
+    parser.add_argument("--skip-evaluation", action="store_true", help="train before calibration; evaluate afterwards")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--evaluate-only", action="store_true")
     parser.add_argument("--pyquda-check", action="store_true")
@@ -337,13 +405,14 @@ def main():
     def smeared_field(index):
         field_path = field_cache / f"cfg_{index:04d}.pt"
         if field_path.exists():
-            return torch.load(field_path, map_location=device, weights_only=True)
+            field = torch.load(field_path, map_location=device, weights_only=True)
+            return field.to(torch.complex128) if args.coupling == STABLE_COUPLING else field
         with torch.no_grad():
             field = smoother(load_links(paths[index], device), projection_device="cpu")
             temporary = field_path.with_suffix(".tmp")
             torch.save(field.cpu(), temporary)
             temporary.replace(field_path)
-        return field
+        return field.to(torch.complex128) if args.coupling == STABLE_COUPLING else field
 
     cache = output / "targets.npz"
     if not cache.exists():
@@ -361,35 +430,58 @@ def main():
     reference = {split: {kind: targets[kind][[target_map[i] for i in ids]]
                         for kind in ("fine", "smeared")}
                  for split, ids in [("train", train_ids), ("validation", val_ids), ("test", test_ids)]}
-    flow1 = SU3ConditionalFlow(sweeps=args.sweeps, constrained=True, initial_scale=-.18).to(device)
-    flow2 = SU3ConditionalFlow(sweeps=args.fine_sweeps, initial_scale=.04).to(device)
-    history = []
     checkpoint_path = output / "flows.pt"
+    saved = None
     if args.resume or args.evaluate_only:
         saved = torch.load(checkpoint_path, map_location=device, weights_only=True)
+        args.coupling = saved.get("coupling", LEGACY_COUPLING)
+        args.sweeps, args.fine_sweeps = saved["sweeps"], saved["fine_sweeps"]
+    flow1 = SU3ConditionalFlow(sweeps=args.sweeps, constrained=True, initial_scale=-.18,
+                               coupling=args.coupling).to(device)
+    flow2 = SU3ConditionalFlow(sweeps=args.fine_sweeps, initial_scale=.04,
+                               coupling=args.coupling).to(device)
+    history = []
+    if saved is not None:
         flow1.load_state_dict(saved["flow1"])
         flow2.load_state_dict(saved["flow2"])
         history = json.loads((output / "history.json").read_text())
+    if args.require_stable_inverse:
+        coarse = (torch.load(args.stability_coarse_file, map_location="cpu", weights_only=True)["coarse"]
+                  if args.stability_coarse_file is not None else None)
+        for stage, flow in enumerate((flow1, flow2), 1):
+            print(f"Checking initial Flow {stage} stability", flush=True)
+            report = flow_roundtrip_check(flow, coarse)
+            assert report["passed"], report
+            print(f"Initial Flow {stage} stability passed", flush=True)
 
     def save():
         temporary = checkpoint_path.with_suffix(".tmp")
         torch.save({"flow1": flow1.state_dict(), "flow2": flow2.state_dict(),
                     "sweeps": args.sweeps, "fine_sweeps": args.fine_sweeps,
-                    "coupling": "mobius_monotone_cubic"}, temporary)
+                    "coupling": args.coupling}, temporary)
         temporary.replace(checkpoint_path)
         _write_json(output / "history.json", history)
 
     if not args.evaluate_only:
+        if not (output / "training_arguments.json").exists():
+            _write_json(output / "training_arguments.json", vars(args))
+        invocation_path = output / "training_invocations.json"
+        invocations = json.loads(invocation_path.read_text()) if invocation_path.exists() else []
+        invocations.append(vars(args).copy())
+        _write_json(invocation_path, invocations)
         fit_conditional_likelihood(flow1, train_ids, val_ids, smeared_field, args, history, save)
         fit_smeared_operators(flow1, train_ids, val_ids, smeared_field, reference,
                               device, args, history, save)
         flow1.eval()
         for parameter in flow1.parameters():
             parameter.requires_grad_(False)
-        fit_paired_transport(flow2, train_ids, paths, smeared_field, device, args, history, save)
+        fit_paired_transport(flow2, train_ids, val_ids, paths, smeared_field, device, args, history, save)
         fit_fine_operators(flow1, flow2, train_ids, val_ids, smeared_field, reference,
                            device, args, history, save)
         save()
+
+    if args.skip_evaluation:
+        return
 
     flow1.eval()
     flow2.eval()
@@ -451,9 +543,9 @@ def main():
                 "train_indices": train_ids, "validation_indices": val_ids, "test_indices": test_ids,
                 "fine_manifest": manifest, "downsampling_architecture": architecture,
                 "method": "conditional Haar-fibre likelihood + paired and operator transport",
-                "coupling": "mobius_monotone_cubic",
+                "coupling": args.coupling,
                 "checkpoint_sha256": hashlib.sha256(checkpoint_path.read_bytes()).hexdigest(),
-                "gauge_equivariant": False, "base": "independent normalized Haar SU(3) details",
+                "gauge_equivariant": flow1.gauge_equivariant, "base": "independent normalized Haar SU(3) details",
                 "stage1_free_links_per_cell": 60, "stage1_flowed_links_per_cell": 56})
     print("FINAL", json.dumps({key: metrics[key]["acceptance"] for key in values}), flush=True)
 

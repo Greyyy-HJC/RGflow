@@ -1,0 +1,15 @@
+{
+  "elapsed_seconds": 865.7755540300277,
+  "method": "fixed scalar grid, forward measurements, validation selection",
+  "minutes_budget": 16.0,
+  "mode": "quick_scalar",
+  "new_gradient_epochs": 0,
+  "parameters_per_flow": 1,
+  "seed": 1234,
+  "source": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/upsample/L12_to_L24_2flow_stable_v3",
+  "source_checkpoint_sha256": "5bb9f9366d793deb42d29caae315ff34d4dbd212133f352883d894cbdd872e1d",
+  "test_configurations": 12,
+  "test_targets_used_in_fit": false,
+  "train_configurations": 4,
+  "validation_configurations": 4
+}

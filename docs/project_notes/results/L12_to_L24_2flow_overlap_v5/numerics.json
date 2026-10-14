@@ -1,0 +1,251 @@
+{
+  "coupling": "covariant_frame_mobius_monotone_cubic_fp64_v2",
+  "checkpoint_sha256": "5ffe6ef69e3eea0b1dbf085d42645db1ec2abf30d4e107e302a9bf9762965867",
+  "lattice_size": 4,
+  "records": [
+    {
+      "stage": 1,
+      "device": "cpu",
+      "dtype": "torch.complex128",
+      "output_dtype": "torch.complex128",
+      "gauge_dtype": "torch.complex128",
+      "seed": 381,
+      "gauge_error": 1.5994558347913925e-14,
+      "inverse_gauge_error": 3.3993232986175352e-12,
+      "roundtrip_error": 3.274327331102523e-12,
+      "logdet_gauge_error": 0.0,
+      "logdet_roundtrip_error": 5.4569682106375694e-11,
+      "su3_errors": [
+        9.658940314238862e-15,
+        9.999950526796669e-15
+      ],
+      "blocking_error": 5.551115123125783e-16
+    },
+    {
+      "stage": 1,
+      "device": "cpu",
+      "dtype": "torch.complex128",
+      "output_dtype": "torch.complex128",
+      "gauge_dtype": "torch.complex128",
+      "seed": 625,
+      "gauge_error": 2.4078917675219073e-14,
+      "inverse_gauge_error": 2.965926657984841e-12,
+      "roundtrip_error": 3.830740163819228e-12,
+      "logdet_gauge_error": 0.0,
+      "logdet_roundtrip_error": 2.546585164964199e-11,
+      "su3_errors": [
+        1.0547118733938987e-14,
+        1.2331355504269194e-14
+      ],
+      "blocking_error": 5.815852873680766e-16
+    },
+    {
+      "stage": 1,
+      "device": "cpu",
+      "dtype": "torch.complex128",
+      "output_dtype": "torch.complex128",
+      "gauge_dtype": "torch.complex128",
+      "seed": 902,
+      "gauge_error": 2.501401477486943e-14,
+      "inverse_gauge_error": 1.2044801192554934e-11,
+      "roundtrip_error": 3.120049253796669e-12,
+      "logdet_gauge_error": 3.637978807091713e-12,
+      "logdet_roundtrip_error": 3.637978807091713e-12,
+      "su3_errors": [
+        9.658940314238862e-15,
+        1.2435271876276229e-14
+      ],
+      "blocking_error": 7.835728851042836e-16
+    },
+    {
+      "stage": 2,
+      "device": "cpu",
+      "dtype": "torch.complex128",
+      "output_dtype": "torch.complex128",
+      "gauge_dtype": "torch.complex128",
+      "seed": 381,
+      "gauge_error": 1.9092689056544208e-14,
+      "inverse_gauge_error": 5.408363224841141e-14,
+      "roundtrip_error": 3.766693408403553e-14,
+      "logdet_gauge_error": 4.547473508864641e-13,
+      "logdet_roundtrip_error": 2.2737367544323206e-13,
+      "su3_errors": [
+        5.773159728050814e-15,
+        5.332380541429921e-15
+      ]
+    },
+    {
+      "stage": 2,
+      "device": "cpu",
+      "dtype": "torch.complex128",
+      "output_dtype": "torch.complex128",
+      "gauge_dtype": "torch.complex128",
+      "seed": 625,
+      "gauge_error": 9.390413093242289e-15,
+      "inverse_gauge_error": 3.000735880545022e-14,
+      "roundtrip_error": 2.5719554792643466e-14,
+      "logdet_gauge_error": 4.547473508864641e-13,
+      "logdet_roundtrip_error": 9.094947017729282e-13,
+      "su3_errors": [
+        5.10702591327572e-15,
+        5.7852781798606354e-15
+      ]
+    },
+    {
+      "stage": 2,
+      "device": "cpu",
+      "dtype": "torch.complex128",
+      "output_dtype": "torch.complex128",
+      "gauge_dtype": "torch.complex128",
+      "seed": 902,
+      "gauge_error": 1.6903356336021176e-14,
+      "inverse_gauge_error": 2.308389691999729e-14,
+      "roundtrip_error": 3.735582904288215e-14,
+      "logdet_gauge_error": 2.2737367544323206e-13,
+      "logdet_roundtrip_error": 4.547473508864641e-13,
+      "su3_errors": [
+        5.551115123125783e-15,
+        6.328576442521343e-15
+      ]
+    },
+    {
+      "stage": 1,
+      "device": "cuda",
+      "dtype": "torch.complex64",
+      "output_dtype": "torch.complex128",
+      "gauge_dtype": "torch.complex128",
+      "seed": 381,
+      "gauge_error": 1.84983415446907e-14,
+      "inverse_gauge_error": 3.85940967595683e-12,
+      "roundtrip_error": 1.8034686893662754e-12,
+      "logdet_gauge_error": 0.0,
+      "logdet_roundtrip_error": 3.637978807091713e-11,
+      "su3_errors": [
+        6.447205609184325e-07,
+        6.225783441409558e-07
+      ],
+      "blocking_error": 4.6113666519211987e-07
+    },
+    {
+      "stage": 1,
+      "device": "cuda",
+      "dtype": "torch.complex64",
+      "output_dtype": "torch.complex128",
+      "gauge_dtype": "torch.complex128",
+      "seed": 625,
+      "gauge_error": 1.3806662292660818e-14,
+      "inverse_gauge_error": 3.028801400900229e-12,
+      "roundtrip_error": 2.3679568683868616e-12,
+      "logdet_gauge_error": 0.0,
+      "logdet_roundtrip_error": 8.731149137020111e-11,
+      "su3_errors": [
+        7.401975283816142e-07,
+        4.971592278115508e-07
+      ],
+      "blocking_error": 5.041118943161778e-07
+    },
+    {
+      "stage": 1,
+      "device": "cuda",
+      "dtype": "torch.complex64",
+      "output_dtype": "torch.complex128",
+      "gauge_dtype": "torch.complex128",
+      "seed": 902,
+      "gauge_error": 1.5650797872535006e-14,
+      "inverse_gauge_error": 2.3221831691414084e-12,
+      "roundtrip_error": 2.9986360582675527e-12,
+      "logdet_gauge_error": 0.0,
+      "logdet_roundtrip_error": 5.4569682106375694e-11,
+      "su3_errors": [
+        5.911073016617863e-07,
+        5.125511201629745e-07
+      ],
+      "blocking_error": 3.709671056407095e-07
+    },
+    {
+      "stage": 2,
+      "device": "cuda",
+      "dtype": "torch.complex64",
+      "output_dtype": "torch.complex128",
+      "gauge_dtype": "torch.complex128",
+      "seed": 381,
+      "gauge_error": 7.8748100353809e-15,
+      "inverse_gauge_error": 3.214301779171159e-14,
+      "roundtrip_error": 2.2726393447662765e-14,
+      "logdet_gauge_error": 0.0,
+      "logdet_roundtrip_error": 2.2737367544323206e-13,
+      "su3_errors": [
+        6.267795872038748e-07,
+        6.225783461381991e-07
+      ]
+    },
+    {
+      "stage": 2,
+      "device": "cuda",
+      "dtype": "torch.complex64",
+      "output_dtype": "torch.complex128",
+      "gauge_dtype": "torch.complex128",
+      "seed": 625,
+      "gauge_error": 3.1202331849910534e-14,
+      "inverse_gauge_error": 4.005614244763142e-14,
+      "roundtrip_error": 2.749018476246137e-14,
+      "logdet_gauge_error": 2.2737367544323206e-13,
+      "logdet_roundtrip_error": 9.094947017729282e-13,
+      "su3_errors": [
+        7.584016952797052e-07,
+        4.97159227142503e-07
+      ]
+    },
+    {
+      "stage": 2,
+      "device": "cuda",
+      "dtype": "torch.complex64",
+      "output_dtype": "torch.complex128",
+      "gauge_dtype": "torch.complex128",
+      "seed": 902,
+      "gauge_error": 7.122064782166202e-15,
+      "inverse_gauge_error": 2.696408101837543e-14,
+      "roundtrip_error": 2.7051250963560856e-14,
+      "logdet_gauge_error": 4.547473508864641e-13,
+      "logdet_roundtrip_error": 1.3642420526593924e-12,
+      "su3_errors": [
+        5.796076958386465e-07,
+        5.125511201674657e-07
+      ]
+    }
+  ],
+  "haar_jacobians": [
+    {
+      "stage": 1,
+      "numeric": 0.661811710243497,
+      "analytic": 0.6618117102434941,
+      "error": 2.9976021664879227e-15
+    },
+    {
+      "stage": 2,
+      "numeric": -0.9462475733021964,
+      "analytic": -0.9462475733022038,
+      "error": 7.327471962526033e-15
+    }
+  ],
+  "full_lattice_generation": {
+    "lattice_size": [
+      24,
+      24,
+      24,
+      24
+    ],
+    "seed": 8324,
+    "device": "cuda",
+    "synchronized_lift_error": 2.865687575934818e-15,
+    "stage_gauge_errors": [
+      9.053657001573354e-14,
+      9.23308276352616e-13
+    ],
+    "stage_roundtrip_errors": [
+      2.827042720955298e-11,
+      2.0365110735717517e-13
+    ],
+    "blocking_error": 2.509117851996481e-15
+  }
+}

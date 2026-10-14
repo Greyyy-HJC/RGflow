@@ -9,7 +9,7 @@ import torch
 from rgflow.su3.downsampling import block_links, su3_errors
 from rgflow.su3.io import read_nersc_gauge
 from rgflow.su3.observables import observable_names, observable_vector_torch
-from rgflow.su3.upsampling import SU3ConditionalFlow
+from rgflow.su3.upsampling import LEGACY_COUPLING, SU3ConditionalFlow
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--checkpoint", type=Path, required=True)
@@ -21,8 +21,9 @@ args = parser.parse_args()
 torch.set_num_threads(2)
 device = torch.device(args.device)
 checkpoint = torch.load(args.checkpoint, map_location=device, weights_only=True)
-flow1 = SU3ConditionalFlow(sweeps=checkpoint["sweeps"], constrained=True).to(device).eval()
-flow2 = SU3ConditionalFlow(sweeps=checkpoint["fine_sweeps"]).to(device).eval()
+coupling = checkpoint.get("coupling", LEGACY_COUPLING)
+flow1 = SU3ConditionalFlow(sweeps=checkpoint["sweeps"], constrained=True, coupling=coupling).to(device).eval()
+flow2 = SU3ConditionalFlow(sweeps=checkpoint["fine_sweeps"], coupling=coupling).to(device).eval()
 flow1.load_state_dict(checkpoint["flow1"])
 flow2.load_state_dict(checkpoint["flow2"])
 if args.coarse_file.suffix in (".pt", ".pth"):
@@ -42,7 +43,8 @@ args.output.parent.mkdir(parents=True, exist_ok=True)
 torch.save({"links": fine.cpu(), "smeared": smeared.cpu(), "coarse": coarse.cpu(),
             "seed": args.seed, "checkpoint": str(args.checkpoint.resolve()),
             "observable_names": observable_names(), "observables": operators,
-            "su3_errors": errors, "blocking_error": blocking_error}, args.output)
+            "su3_errors": errors, "blocking_error": blocking_error,
+            "coupling": coupling, "gauge_equivariant": flow1.gauge_equivariant}, args.output)
 print(dict(zip(observable_names(), operators.tolist())))
 print("SU(3) errors:", errors, "blocking error:", blocking_error)
 print(args.output)

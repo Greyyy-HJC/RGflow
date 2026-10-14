@@ -7,3 +7,4 @@ artifacts/
 temp/*
 !temp/.gitkeep
 uv.lock
+TODO

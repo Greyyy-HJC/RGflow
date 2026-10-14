@@ -1,0 +1,16 @@
+{
+  "latex-workshop.latex.recipes": [
+    {
+      "name": "Tectonic (project note)",
+      "tools": ["tectonic-project"]
+    }
+  ],
+  "latex-workshop.latex.tools": [
+    {
+      "name": "tectonic-project",
+      "command": "/home/jinchen/git/fnal/RGflow/temp/latex-toolchain/tectonic",
+      "args": ["--synctex", "--keep-logs", "%DOC%.tex"]
+    }
+  ],
+  "latex-workshop.latex.recipe.default": "first"
+}

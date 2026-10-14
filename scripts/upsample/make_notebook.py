@@ -12,12 +12,18 @@ from jupyter_client import KernelManager
 
 ROOT = Path(__file__).resolve().parents[2]
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--run", type=Path, default=ROOT / "artifacts/4dsu3/upsample/L12_to_L24_2flow_v1")
+parser.add_argument("--run", type=Path, default=ROOT / "artifacts/4dsu3/upsample/L12_to_L24_2flow_equivariant_v2")
 args = parser.parse_args()
+run_metadata = json.loads((args.run/'run.json').read_text())
 bundle = ROOT / "presentation/results/upsampling_2flow"
 bundle.mkdir(parents=True, exist_ok=True)
 for name in ["observable_distributions.npz", "metrics.json", "history.json", "run.json", "flows.pt"]:
     shutil.copy2(args.run / name, bundle / name)
+for name in ['numerics.json', 'training_arguments.json', 'training_invocations.json', 'offload_validation.json']:
+    if (args.run/name).exists():
+        shutil.copy2(args.run/name, bundle/name)
+if (args.run/'execution_notes.json').exists():
+    shutil.copy2(args.run/'execution_notes.json', bundle/'execution_notes.json')
 for name in ['calibration_stage1.json', 'calibration_stage2.json']:
     if (args.run/name).exists():
         shutil.copy2(args.run/name, bundle/name)
@@ -77,14 +83,16 @@ print('Source:', metrics['source'])
 print('Rethermalization sweeps:', metrics['rethermalization_sweeps'])
 m = metrics['flow2_fine']
 display(Markdown(f"**Prototype outcome:** one-target-σ mean criterion **{'PASS' if m['acceptance']['test_all_means_within_one_target_sigma'] else 'FAIL'}**; full distribution check **{'PASS' if m['acceptance']['distribution_match'] else 'FAIL'}**. Width ratios: " + ', '.join(f'{x:.2f}' for x in m['std_ratio']) + '.'))
-display(Markdown('The workflow and sampling are operational; these fields are not yet a validated heatbath-equivalent ensemble. Flow-1 bias and excess final widths remain to be reduced.'))
+display(Markdown('The four-operator criteria test the measured distributions; they do not establish equality of the full heatbath measure. Intermediate and teacher-input diagnostics are shown below.'))
 """),
     nbf.v4.new_markdown_cell(r"""## Invertible group couplings
 
 Each flow uses alternating site checkerboards, link directions and the three
-embedded SU(2) subgroups. Project $UC^\dagger$ (with $C$ the frozen staple sum)
+embedded SU(2) subgroups in a **covariant local frame**. Diagonalize the
+inactive-staple matrix $CC^\dagger=F\Lambda F^\dagger$, and project
+$F^\dagger UC^\dagger F$ (with $C$ the frozen staple sum)
 onto its quaternion part $r=|r|q$. A small neural network takes $|r|$,
-frozen nearest/length-three staple norms and overlap, and the four coarse-cell
+frozen nearest/transverse-distance-three staple norms and overlap, and the four fine-site
 parity bits. These features are unchanged by the active SU(2) rotation.
 The predicted scale $s$ transforms the SU(2) fibre by
 
@@ -97,8 +105,10 @@ are rescaled by $\sqrt{(1-g(u)^2)/(1-u^2)}$. Its Jacobian is
 $g'(u)\sqrt{(1-g(u)^2)/(1-u^2)}$, with $g'(u)\ge .1$.
 The inverse solves the monotone scalar cubic, applies $s\to-s$, and reverses
 the coupling order. This is a normalizing flow with an analytic nonzero Haar
-Jacobian. The cubic shape was added during this prototype run, initially at
-zero so the already learned Möbius maps were unchanged. Flow 1 starts from
+Jacobian. Eigenvector phases cancel in the subgroup rotation. A spectral-gap
+gate suppresses updates near repeated eigenvalues; degenerate frames give
+identity updates. Analytic CUDA 3x3 frames with a CPU near-collision fallback
+avoid the L24 solver workspace while preserving autograd. Flow 1 starts from
 independent Haar links and sets each dependent second link to $U_1^\dagger C$.
 The four first links are Haar gauge degrees of freedom; the other 56 free
 links are transformed. Both retained links remain frozen during Flow 1.
@@ -114,7 +124,7 @@ four-draw pool for larger gradient-based fine fits.
 Finally, bounded least-squares fitting can refine six shared offsets (shift,
 shape and long-staple weight in each half of a flow) on fixed training draws.
 It changes only flow parameters, not the samples by post-hoc rescaling.
-Finite differences of 0.002 resolve the single-precision field measurements;
+Finite differences use an absolute step of 0.002;
 the validation set selects among the training-fitted candidates.
 The final refinement uses independent per-operator standard deviations;
 earlier moment fits used regularized covariance. Loss magnitudes across these
@@ -122,8 +132,12 @@ two metrics are not directly comparable and are plotted as separate series.
 This moment fit tests the selected operators; it does not establish equality
 of the complete gauge-field probability measures.
 
-**Prototype limitation:** the chosen SU(2) colour subgroups break exact gauge
-equivariance. Invertibility and group membership are tested explicitly.
+The new coupling is gauge equivariant: under a local transformation,
+$F\to G F D$, and arbitrary eigenvector phases $D$ cancel. This follows the
+inactive-context and symmetry principles of
+[He et al., arXiv:2511.02018](https://arxiv.org/abs/2511.02018), while retaining
+the analytic SU(2) Haar maps. The checkpoint records the coupling version;
+older fixed-colour checkpoints remain non-equivariant.
 """),
     nbf.v4.new_code_cell("""fig, axes = plt.subplots(2, 2, figsize=(11, 6), constrained_layout=True)
 phases = ['conditional_nll', 'smeared_moments', 'paired_transport', 'generated_moments']
@@ -131,10 +145,12 @@ titles = ['Flow 1: conditional NLL / free link', 'Flow 1: generated smeared oper
 for ax, phase, title in zip(axes.flat, phases, titles):
     rows = [r for r in history if r['phase'] == phase]
     moment = phase in ['smeared_moments', 'generated_moments']
-    groups = sorted({r.get('mean_metric', 'covariance') for r in rows}) if moment else ['all']
-    for metric in groups:
-        current = [r for r in rows if not moment or r.get('mean_metric', 'covariance') == metric]
-        suffix = f' ({metric})' if moment else ''
+    groups = dict.fromkeys((r.get('mean_metric', 'covariance'), r.get('variance_weight', 1),
+                            r.get('optimizer', 'Adam')) for r in rows)
+    for metric, weight, method in groups:
+        current = [r for r in rows if (r.get('mean_metric', 'covariance'), r.get('variance_weight', 1),
+                                      r.get('optimizer', 'Adam')) == (metric, weight, method)]
+        suffix = f' ({method}, {metric}, width ×{weight:g})' if moment else ''
         ax.plot([r['epoch'] for r in current], [r['train_loss'] for r in current], 'o-', label='Training'+suffix)
         val = [r for r in current if 'validation_loss' in r]
         if val:
@@ -220,14 +236,22 @@ differences = np.asarray(metrics['pyquda_differences'])
 print('PyQUDA - Torch max |difference|:', np.abs(differences).max(axis=0) if differences.size else 'not run')
 print('Acceptance:', metrics['flow2_fine']['acceptance'])
 print('Frozen downsampling coefficients:', run['downsampling_architecture']['coefficients'])
+print('Coupling / gauge equivariance:', run['coupling'], run['gauge_equivariant'])
+if (RUN / 'numerics.json').exists():
+    numerical = json.loads((RUN / 'numerics.json').read_text())
+    if numerical['checkpoint_sha256'] == run['checkpoint_sha256']:
+        print('Trained-flow covariance checks:', numerical['records'])
+        print('Eight-dimensional Haar Jacobian checks:', numerical['haar_jacobians'])
+        print('Synchronized-noise full-lattice generation:', numerical.get('full_lattice_generation'))
 """),
     nbf.v4.new_markdown_cell("""Training and report commands (repository root):
 
 ```bash
-OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python scripts/upsample/train.py --pyquda-check
+OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python scripts/upsample/train.py --skip-evaluation
 .venv/bin/python scripts/upsample/calibrate.py --stage 1
-.venv/bin/python scripts/upsample/calibrate.py --stage 2 --anneal-init
+.venv/bin/python scripts/upsample/calibrate.py --stage 2
 .venv/bin/python scripts/upsample/train.py --evaluate-only --pyquda-check
+.venv/bin/python scripts/upsample/validate.py
 .venv/bin/python scripts/upsample/make_notebook.py
 ```
 
@@ -237,6 +261,102 @@ uses downsampled heatbath fields as its coarse source; transfer to an
 independently generated L12 heatbath ensemble is a separate validation.
 """),
 ]
+if run_metadata.get('coupling') == 'covariant_frame_mobius_monotone_cubic_fp64_v2':
+    for cell in notebook.cells:
+        if cell.cell_type == 'markdown' and cell.source.startswith('## Invertible group couplings'):
+            cell.source += """
+
+This continuation retains float64 conditioners and complex128 fields, including
+when the external input is single precision. Small-lattice CPU/CUDA covariance,
+inverse and log-density checks, plus a physical L24 roundtrip, gate training
+updates and calibration selection. Unstable updates are rejected. The new
+moment objective uses per-target-width means and ten times the log-variance
+residuals; its losses are separated from the earlier covariance objective.
+CUDA gradient checkpoints store their exact input fields in pinned CPU memory;
+a full L24 moment VJP verifies finite gradients and GPU memory before training.
+The uncalibrated covariant checkpoint provides the warm start. Flow 1 is
+calibrated before the continued Flow-2 moment fit.
+"""
+    notebook.cells[-1].source = f"""The stable continuation is run by
+`scripts/upsample/continue_stable_v3.sh`. It records its current phase and logs in
+`{args.run.relative_to(ROOT) if args.run.is_absolute() else args.run}`.
+The execution notes, training invocations and calibration summaries record
+the exact settings. Final reports require matching numerical and checkpoint
+hashes. No test targets enter the fits.
+"""
+if not run_metadata.get('gauge_equivariant', False):
+    for cell in notebook.cells:
+        if cell.cell_type == 'markdown' and cell.source.startswith('## Invertible group couplings'):
+            cell.source = r"""## Legacy fixed-colour group couplings
+
+This saved run uses the earlier fixed-colour SU(2) subgroups and is **not
+gauge equivariant**. Its radial and monotone cubic maps retain their analytic
+Haar Jacobians and inverse coupling order. Flow 1 fixes the retained two-link
+products; Flow 2 is an unconstrained transport. The covariant-eigenframe
+architecture is used only by the separately versioned revised run.
+"""
+execution = json.loads((args.run/'execution_notes.json').read_text()) if (args.run/'execution_notes.json').exists() else {}
+if execution.get('mode') == 'quick_scalar':
+    for cell in notebook.cells:
+        if cell.cell_type == 'markdown' and cell.source.startswith('## Invertible group couplings'):
+            cell.source = cell.source.split('Flow 1 starts with the exact conditional Haar NLL')[0]+r"""
+The current short experiment reuses the pretrained covariant maps in double
+precision. It performs **no new gradient training**. Only a single offset
+$\delta_k$ is added to all three raw scale outputs in every sweep of flow $k$.
+Feature weights, cubic shapes and staple weights remain fixed. Up to four
+predefined offsets per flow are measured on four training and four validation
+sources, with fixed Haar noise. Validation selects a numerically stable value.
+Flow 1 is frozen before the Flow-2 scan. Final measurements use 12 held-out
+sources with fresh noise and three PyQUDA checks; this is a small pilot.
+
+The plots include the inherited checkpoint's earlier training history and
+the current scalar scan as separate series. Scalar selection fits target-width
+normalized means and log variances, without using test targets. Final numerical
+reports must match the evaluated checkpoint hash. The invariant-context and
+covariant-update principles follow [He et al., arXiv:2511.02018](https://arxiv.org/abs/2511.02018).
+"""
+    notebook.cells[-1].source = """Quick-run command (choose a new output directory):
+
+```bash
+.venv/bin/python scripts/upsample/quick.py --output artifacts/4dsu3/upsample/quick_reproduction --minutes 16
+```
+
+The underlying source checkpoint and exact settings are recorded in
+`execution_notes.json`. The test subset follows the existing split; no heatbath
+ensemble is regenerated and no rethermalization is performed.
+"""
+if execution.get('mode') == 'six_offset_fine':
+    for cell in notebook.cells:
+        if cell.cell_type == 'markdown' and cell.source.startswith('## Invertible group couplings'):
+            cell.source = cell.source.split('Flow 1 starts with the exact conditional Haar NLL')[0]+f"""
+This experiment reuses the pretrained covariant maps in double precision.
+**Flow 1 is frozen at its stable uncalibrated checkpoint.** A previously
+calibrated Flow 2 provides the warm start, then six offsets are refitted:
+raw scale, cubic shape and long-staple weight separately in its two sweeps.
+Feature-dependent weights remain fixed. No new gradient epochs are run.
+The fit uses {execution['train_configurations']} training and
+{execution['validation_configurations']} validation sources with fixed Haar
+noise, target-width-normalized means and log variances. Validation selects
+the best numerically stable candidate with all mean shifts within two target
+widths; the stricter test acceptance criterion is unchanged. The final evaluation uses
+{execution['test_configurations']} held-out sources with fresh noise and
+three independent PyQUDA measurement checks. No test targets enter the fit.
+
+The intermediate smeared distribution and teacher-input transport are
+reported separately: fine-output overlap does not imply that those
+distributions agree. Covariance, inverse, log-density and full eight-dimensional
+local Haar Jacobian checks refer to the evaluated checkpoint hash.
+"""
+    notebook.cells[-1].source = """Reproduction command (choose a new output directory):
+
+```bash
+.venv/bin/python scripts/upsample/overlap.py --output artifacts/4dsu3/upsample/overlap_reproduction
+```
+
+Source checkpoint hashes and the time budget are recorded in
+`execution_notes.json`; calibration summaries contain the selected offsets.
+The frozen smoother and heatbath ensembles are reused without rethermalization.
+"""
 path = ROOT / "presentation/upsampling_2flow.ipynb"
 nbf.write(notebook, path)
 manager = KernelManager(kernel_name="python3")

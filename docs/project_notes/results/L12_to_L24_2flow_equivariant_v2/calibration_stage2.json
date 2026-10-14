@@ -1,0 +1,58 @@
+{
+  "baseline_checkpoint": "1a88f3c78778",
+  "best_offsets": [
+    0.516392367946337,
+    0.493537164778481,
+    -0.18360829407210982,
+    -0.28028983629770426,
+    1.058518702760555,
+    -0.8631276462430753
+  ],
+  "best_validation_loss": 57.69927110159182,
+  "bound": 1.5,
+  "evaluations": 30,
+  "initial_offsets": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "mean_metric": "diagonal",
+  "message": "The maximum number of function evaluations is exceeded.",
+  "optimizer": "bounded least_squares",
+  "seed": 1234,
+  "terminal_offsets": [
+    0.516392367946337,
+    0.493537164778481,
+    -0.18360829407210982,
+    -0.28028983629770426,
+    1.058518702760555,
+    -0.8631276462430753
+  ],
+  "train_ids": [
+    0,
+    1,
+    2,
+    5,
+    6,
+    7,
+    10,
+    11,
+    12,
+    15,
+    16,
+    17
+  ],
+  "validation_ids": [
+    3,
+    8,
+    13,
+    18,
+    23,
+    28,
+    33,
+    38
+  ]
+}

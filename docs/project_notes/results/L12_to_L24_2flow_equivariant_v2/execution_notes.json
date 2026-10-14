@@ -1,0 +1,19 @@
+{
+  "restart_after_likelihood_epoch": 3,
+  "reason": "Replace CPU-only frames with numerically equivalent analytic CUDA frames and CPU near-collision fallback.",
+  "discarded_work": "Any unfinished fourth likelihood epoch before interruption.",
+  "resume_checkpoint": "cpu_epoch3_flows.pt",
+  "cuda_zero_context_fix": "Explicit positive-trace check routes exactly zero context to the identity fallback; validated by CUDA degeneracy regression tests before the completed Flow-1 resume.",
+  "restart_after_flow1_moments": {
+    "reason": "Select paired transport initialization by eight-pair validation loss.",
+    "discarded_work": "Unfinished first paired epoch; no paired checkpoint saved.",
+    "resume_checkpoint": "flow1_completed_flows.pt"
+  },
+  "restart_after_paired_epoch1": {
+    "reason": "No training or pipeline process remained active when checked; log ends during paired epoch 2 without an exit diagnostic.",
+    "discarded_work": "Unfinished paired epoch 2; resume the epoch-1 saved checkpoint for two remaining epochs.",
+    "resume_checkpoint": "paired_epoch1_flows.pt",
+    "optimizer_state": "Adam is reinitialized on resume.",
+    "launcher": "Detached session with file-backed stdout/stderr and no terminal input."
+  }
+}

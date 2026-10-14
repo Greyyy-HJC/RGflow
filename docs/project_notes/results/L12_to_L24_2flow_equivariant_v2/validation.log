@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/jinchen/git/fnal/RGflow/scripts/upsample/validate.py", line 70, in <module>
+    assert row['inverse_gauge_error'] < tolerance, row
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'stage': 1, 'device': 'cpu', 'dtype': 'torch.complex128', 'seed': 381, 'gauge_error': 1.2241475562568975e-12, 'inverse_gauge_error': 1.8315704232710714, 'roundtrip_error': 1.8902299031826444, 'logdet_gauge_error': 1.4551915228366852e-11, 'logdet_roundtrip_error': 126721.4441325179, 'su3_errors': (8.215650382226158e-15, 9.992544331663704e-15), 'blocking_error': 5.551115123125783e-16}

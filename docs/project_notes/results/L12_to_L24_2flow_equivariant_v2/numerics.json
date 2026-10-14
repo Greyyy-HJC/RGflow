@@ -1,0 +1,207 @@
+{
+  "coupling": "covariant_frame_mobius_monotone_cubic_v1",
+  "checkpoint_sha256": "097fab1b08bf560785ed33852a7b487626faf5a7f8ec44cfbd3a28e50c6046c3",
+  "lattice_size": 4,
+  "records": [
+    {
+      "stage": 1,
+      "device": "cpu",
+      "dtype": "torch.complex128",
+      "seed": 381,
+      "gauge_error": 9.075521493205902e-15,
+      "inverse_gauge_error": 1.6066475035745814e-14,
+      "roundtrip_error": 2.008031016027227e-14,
+      "logdet_gauge_error": 0.0,
+      "logdet_roundtrip_error": 4.092726157978177e-12,
+      "su3_errors": [
+        1.0436096431476471e-14,
+        1.3545533605762085e-14
+      ],
+      "blocking_error": 5.551115123125783e-16
+    },
+    {
+      "stage": 1,
+      "device": "cpu",
+      "dtype": "torch.complex128",
+      "seed": 625,
+      "gauge_error": 8.157542633075572e-15,
+      "inverse_gauge_error": 1.401700537128334e-14,
+      "roundtrip_error": 1.367558643333441e-14,
+      "logdet_gauge_error": 0.0,
+      "logdet_roundtrip_error": 2.7284841053187847e-12,
+      "su3_errors": [
+        9.992007221626409e-15,
+        1.088301666178138e-14
+      ],
+      "blocking_error": 5.815852873680766e-16
+    },
+    {
+      "stage": 1,
+      "device": "cpu",
+      "dtype": "torch.complex128",
+      "seed": 902,
+      "gauge_error": 1.0097576064174685e-14,
+      "inverse_gauge_error": 1.6454844781941384e-14,
+      "roundtrip_error": 1.539651590519472e-14,
+      "logdet_gauge_error": 1.3642420526593924e-12,
+      "logdet_roundtrip_error": 4.547473508864641e-12,
+      "su3_errors": [
+        9.547918011776346e-15,
+        1.1324385008856161e-14
+      ],
+      "blocking_error": 7.835728851042836e-16
+    },
+    {
+      "stage": 2,
+      "device": "cpu",
+      "dtype": "torch.complex128",
+      "seed": 381,
+      "gauge_error": 3.2652638748082423e-15,
+      "inverse_gauge_error": 2.830524433501838e-15,
+      "roundtrip_error": 4.319894765979208e-15,
+      "logdet_gauge_error": 8.526512829121202e-14,
+      "logdet_roundtrip_error": 8.810729923425242e-13,
+      "su3_errors": [
+        6.106226635438361e-15,
+        7.882742095362342e-15
+      ]
+    },
+    {
+      "stage": 2,
+      "device": "cpu",
+      "dtype": "torch.complex128",
+      "seed": 625,
+      "gauge_error": 3.633755041099893e-15,
+      "inverse_gauge_error": 3.0448464188756523e-15,
+      "roundtrip_error": 3.450052153957689e-15,
+      "logdet_gauge_error": 0.0,
+      "logdet_roundtrip_error": 9.094947017729282e-13,
+      "su3_errors": [
+        4.884981308350689e-15,
+        5.329998610301453e-15
+      ]
+    },
+    {
+      "stage": 2,
+      "device": "cpu",
+      "dtype": "torch.complex128",
+      "seed": 902,
+      "gauge_error": 3.1788314255730753e-15,
+      "inverse_gauge_error": 2.914203267236168e-15,
+      "roundtrip_error": 3.338770859414089e-15,
+      "logdet_gauge_error": 2.842170943040401e-14,
+      "logdet_roundtrip_error": 9.094947017729282e-13,
+      "su3_errors": [
+        5.329070518200751e-15,
+        5.773168313802929e-15
+      ]
+    },
+    {
+      "stage": 1,
+      "device": "cuda",
+      "dtype": "torch.complex64",
+      "seed": 381,
+      "gauge_error": 4.36909067502711e-06,
+      "inverse_gauge_error": 5.042144493927481e-06,
+      "roundtrip_error": 4.252447979524732e-06,
+      "logdet_gauge_error": 0.000244140625,
+      "logdet_roundtrip_error": 0.000732421875,
+      "su3_errors": [
+        3.099444256804418e-06,
+        4.413260285218712e-06
+      ],
+      "blocking_error": 4.539354563348752e-07
+    },
+    {
+      "stage": 1,
+      "device": "cuda",
+      "dtype": "torch.complex64",
+      "seed": 625,
+      "gauge_error": 6.049927833373658e-06,
+      "inverse_gauge_error": 5.998574579280103e-06,
+      "roundtrip_error": 5.853786205989309e-06,
+      "logdet_gauge_error": 0.0,
+      "logdet_roundtrip_error": 0.0,
+      "su3_errors": [
+        3.5762816423812183e-06,
+        4.410901055962313e-06
+      ],
+      "blocking_error": 4.76837158203125e-07
+    },
+    {
+      "stage": 1,
+      "device": "cuda",
+      "dtype": "torch.complex64",
+      "seed": 902,
+      "gauge_error": 3.2813020425237482e-06,
+      "inverse_gauge_error": 3.939434009225806e-06,
+      "roundtrip_error": 5.5480568335042335e-06,
+      "logdet_gauge_error": 0.0,
+      "logdet_roundtrip_error": 0.000732421875,
+      "su3_errors": [
+        2.8610395474970574e-06,
+        3.6446972444537096e-06
+      ],
+      "blocking_error": 3.816559512870299e-07
+    },
+    {
+      "stage": 2,
+      "device": "cuda",
+      "dtype": "torch.complex64",
+      "seed": 381,
+      "gauge_error": 8.597595524406643e-07,
+      "inverse_gauge_error": 9.702932857180713e-07,
+      "roundtrip_error": 9.906750619848026e-07,
+      "logdet_gauge_error": 1.52587890625e-05,
+      "logdet_roundtrip_error": 0.0001373291015625,
+      "su3_errors": [
+        1.9073761450272286e-06,
+        2.145974121958716e-06
+      ]
+    },
+    {
+      "stage": 2,
+      "device": "cuda",
+      "dtype": "torch.complex64",
+      "seed": 625,
+      "gauge_error": 2.0701354515040293e-06,
+      "inverse_gauge_error": 2.16061698665726e-06,
+      "roundtrip_error": 1.0812329946929822e-06,
+      "logdet_gauge_error": 1.52587890625e-05,
+      "logdet_roundtrip_error": 0.0001678466796875,
+      "su3_errors": [
+        1.4305202284958796e-06,
+        1.7903731759361108e-06
+      ]
+    },
+    {
+      "stage": 2,
+      "device": "cuda",
+      "dtype": "torch.complex64",
+      "seed": 902,
+      "gauge_error": 1.5709244962636149e-06,
+      "inverse_gauge_error": 8.107108442345634e-07,
+      "roundtrip_error": 1.1087105349361082e-06,
+      "logdet_gauge_error": 1.52587890625e-05,
+      "logdet_roundtrip_error": 0.000152587890625,
+      "su3_errors": [
+        2.1457713046402205e-06,
+        2.2657607132714475e-06
+      ]
+    }
+  ],
+  "haar_jacobians": [
+    {
+      "stage": 1,
+      "numeric": -0.1195737814637794,
+      "analytic": -0.11957378146377687,
+      "error": 2.525757381022231e-15
+    },
+    {
+      "stage": 2,
+      "numeric": -0.17573058553852627,
+      "analytic": -0.17573058553852217,
+      "error": 4.107825191113079e-15
+    }
+  ]
+}

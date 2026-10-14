@@ -16,11 +16,11 @@ from scipy.optimize import least_squares
 from rgflow.su3.downsampling import block_links
 from rgflow.su3.observables import observable_vector_torch
 from rgflow.su3.training import _covariance_inverse, _stats, _write_json, VARIANCE_EPS
-from rgflow.su3.upsampling import SU3ConditionalFlow, constrained_haar_lift
+from rgflow.su3.upsampling import LEGACY_COUPLING, STABLE_COUPLING, SU3ConditionalFlow, constrained_haar_lift, flow_roundtrip_check
 
 ROOT = Path(__file__).resolve().parents[2]
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--run', type=Path, default=ROOT/'artifacts/4dsu3/upsample/L12_to_L24_2flow_v1')
+parser.add_argument('--run', type=Path, default=ROOT/'artifacts/4dsu3/upsample/L12_to_L24_2flow_equivariant_v2')
 parser.add_argument('--stage', type=int, choices=[1, 2], required=True)
 parser.add_argument('--train-configs', type=int, default=12)
 parser.add_argument('--validation-configs', type=int, default=8)
@@ -29,7 +29,13 @@ parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument('--bound', type=float, default=1.5)
 parser.add_argument('--anneal-init', action='store_true', help='expand details in first half and contract in second')
 parser.add_argument('--mean-metric', choices=['diagonal', 'covariance'], default='diagonal')
+parser.add_argument('--variance-weight', type=float, default=1.)
+parser.add_argument('--require-stable-inverse', action='store_true')
+parser.add_argument('--stability-coarse-file', type=Path)
+parser.add_argument('--minutes', type=float, default=0., help='stop after an accepted iteration reaches this time budget')
+parser.add_argument('--patience', type=int, default=0, help='stop after this many objective evaluations without validation improvement')
 args = parser.parse_args()
+started = time.monotonic()
 torch.set_num_threads(2)
 device = torch.device('cuda')
 saved = torch.load(args.run/'flows.pt', map_location=device, weights_only=True)
@@ -37,11 +43,14 @@ baseline_hash = hashlib.sha256((args.run/'flows.pt').read_bytes()).hexdigest()[:
 baseline_directory = args.run/'calibration_baselines'
 baseline_directory.mkdir(exist_ok=True)
 shutil.copy2(args.run/'flows.pt', baseline_directory/f'{baseline_hash}.pt')
-flow1 = SU3ConditionalFlow(sweeps=saved['sweeps'], constrained=True).to(device).eval()
-flow2 = SU3ConditionalFlow(sweeps=saved['fine_sweeps']).to(device).eval()
+coupling = saved.get('coupling', LEGACY_COUPLING)
+flow1 = SU3ConditionalFlow(sweeps=saved['sweeps'], constrained=True, coupling=coupling).to(device).eval()
+flow2 = SU3ConditionalFlow(sweeps=saved['fine_sweeps'], coupling=coupling).to(device).eval()
 flow1.load_state_dict(saved['flow1'])
 flow2.load_state_dict(saved['flow2'])
 model = flow1 if args.stage == 1 else flow2
+stability_coarse = (torch.load(args.stability_coarse_file, map_location='cpu', weights_only=True)['coarse']
+                    if args.stability_coarse_file is not None else None)
 baseline = copy.deepcopy(model.state_dict())
 history = json.loads((args.run/'history.json').read_text())
 phase = 'smeared_moments' if args.stage == 1 else 'generated_moments'
@@ -58,6 +67,8 @@ with torch.no_grad():
     for split, ids in [('train', train_ids), ('validation', val_ids)]:
         for index in ids:
             smeared = torch.load(args.run/'smeared_fields'/f'cfg_{index:04d}.pt', map_location=device, weights_only=True)
+            if coupling == STABLE_COUPLING:
+                smeared = smeared.to(torch.complex128)
             generator = torch.Generator(device=device).manual_seed(args.seed+60000+index)
             base = constrained_haar_lift(block_links(smeared), generator=generator)
             value = base if args.stage == 1 else flow1(base, compute_logdet=False)[0]
@@ -92,27 +103,36 @@ def residual(values, split):
     else:
         _, inverse = _covariance_inverse(target, target, .1)
         mean_residual = np.linalg.cholesky(inverse).T @ mean_difference
-    widths = np.log(values.var(0, ddof=1)+VARIANCE_EPS)-logvar
+    widths = args.variance_weight**.5*(np.log(values.var(0, ddof=1)+VARIANCE_EPS)-logvar)
     return np.r_[mean_residual, widths]
 
 
 set_parameters(np.zeros(6))
+if args.require_stable_inverse:
+    stability = flow_roundtrip_check(model, stability_coarse)
+    assert stability['passed'], stability
 best_loss = float((residual(measure('validation'), 'validation')**2).sum())
 best_state = copy.deepcopy(model.state_dict())
 best_offsets = np.zeros(6)
 evaluations = 0
+last_improvement = 0
+last_x, last_residual = None, None
 
 
 def objective(x):
-    global evaluations, best_loss, best_state, best_offsets
+    global evaluations, best_loss, best_state, best_offsets, last_x, last_residual, last_improvement
     started = time.time()
     set_parameters(x)
     values = measure('train')
     result = residual(values, 'train')
-    validation = residual(measure('validation'), 'validation')
+    last_x, last_residual = np.array(x, copy=True), result.copy()
+    validation_values = measure('validation')
+    validation = residual(validation_values, 'validation')
     loss = float(validation@validation)
     evaluations += 1
-    if loss < best_loss:
+    stability = flow_roundtrip_check(model, stability_coarse) if args.require_stable_inverse else {'passed': True}
+    if loss < best_loss and stability['passed']:
+        last_improvement = evaluations
         best_loss = loss
         best_state = copy.deepcopy(model.state_dict())
         best_offsets = np.array(x, copy=True)
@@ -122,8 +142,14 @@ def objective(x):
         temporary.replace(args.run/'flows.pt')
     record = {'phase': phase, 'epoch': epoch_offset+evaluations, 'optimizer': 'global_least_squares',
               'mean_metric': args.mean_metric,
+              'variance_weight': args.variance_weight, 'stability': stability,
               'baseline_checkpoint': baseline_hash,
               'train_loss': float(result@result), 'validation_loss': loss, 'mean': values.mean(0),
+              'validation_mean': validation_values.mean(0),
+              'validation_mean_shift': ((validation_values.mean(0)-references['validation'].mean(0)) /
+                                        references['validation'].std(0, ddof=1)),
+              'validation_std_ratio': (validation_values.std(0, ddof=1) /
+                                       references['validation'].std(0, ddof=1)),
               'train_configurations': len(train_ids), 'validation_configurations': len(val_ids),
               'offsets': x.tolist(), 'seconds': time.time()-started}
     history.append(record)
@@ -137,7 +163,7 @@ def jacobian(x):
     # SciPy's usual ~1e-8 differences would disappear in the SU(3) fields.
     step = .002
     set_parameters(x)
-    center = residual(measure('train'), 'train')
+    center = last_residual if np.array_equal(x, last_x) else residual(measure('train'), 'train')
     columns = []
     for axis in range(6):
         trial = np.array(x, copy=True)
@@ -145,6 +171,12 @@ def jacobian(x):
         set_parameters(trial)
         columns.append((residual(measure('train'), 'train')-center)/step)
     return np.stack(columns, 1)
+
+
+def stop_at_budget(x):
+    if ((args.minutes and time.monotonic()-started >= args.minutes*60)
+            or (args.patience and evaluations-last_improvement >= args.patience)):
+        raise StopIteration
 
 
 initial = np.zeros(6)
@@ -156,9 +188,10 @@ if args.anneal_init:
         initial[3*half+2] = -float(model.long_weights[list(sweeps)].detach().mean())
     initial = np.clip(initial, -args.bound+.001, args.bound-.001)
 result = least_squares(objective, initial, jac=jacobian, bounds=(-args.bound, args.bound),
-                       max_nfev=args.max_evaluations, ftol=1.e-5, xtol=1.e-5, gtol=1.e-5)
+                       max_nfev=args.max_evaluations, ftol=1.e-5, xtol=1.e-5, gtol=1.e-5,
+                       callback=stop_at_budget)
 model.load_state_dict(best_state)
-saved.update(flow1=flow1.state_dict(), flow2=flow2.state_dict(), coupling='mobius_monotone_cubic')
+saved.update(flow1=flow1.state_dict(), flow2=flow2.state_dict(), coupling=coupling)
 temporary = (args.run/'flows.pt').with_suffix('.tmp')
 torch.save(saved, temporary)
 temporary.replace(args.run/'flows.pt')
@@ -166,7 +199,12 @@ _write_json(args.run/f'calibration_stage{args.stage}.json',
             {'train_ids': train_ids, 'validation_ids': val_ids, 'seed': args.seed,
              'optimizer': 'bounded least_squares', 'best_validation_loss': best_loss,
              'mean_metric': args.mean_metric, 'initial_offsets': initial.tolist(), 'bound': args.bound,
+             'variance_weight': args.variance_weight, 'require_stable_inverse': args.require_stable_inverse,
              'baseline_checkpoint': baseline_hash,
+             'minutes_budget': args.minutes, 'elapsed_seconds': time.monotonic()-started,
+             'patience': args.patience,
+             'stopping_reason': ('validation patience' if args.patience and evaluations-last_improvement >= args.patience
+                                 else 'time budget' if result.status == -2 else result.message),
              'evaluations': evaluations, 'terminal_offsets': result.x.tolist(),
              'best_offsets': best_offsets.tolist(),
              'message': result.message})

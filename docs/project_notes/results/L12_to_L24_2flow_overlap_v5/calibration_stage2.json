@@ -1,0 +1,65 @@
+{
+  "baseline_checkpoint": "3c3fb5e5059c",
+  "best_offsets": [
+    -0.1582177942752567,
+    -0.2916659063913645,
+    -0.08139839817262765,
+    0.04562942137400261,
+    -0.8155239721032482,
+    -0.01684206462894549
+  ],
+  "best_validation_loss": 72.08979048529316,
+  "bound": 1.5,
+  "elapsed_seconds": 2363.0756130218506,
+  "evaluations": 15,
+  "initial_offsets": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "manual_early_stop": "SIGINT after six completed objective evaluations without validation improvement; best checkpoint retained",
+  "mean_metric": "diagonal",
+  "message": "validation patience",
+  "minutes_budget": 65.0,
+  "optimizer": "bounded least_squares",
+  "patience": 6,
+  "require_stable_inverse": true,
+  "seed": 1234,
+  "selected_epoch": 29,
+  "stopping_reason": "validation patience",
+  "terminal_offsets": [
+    -0.16623724275724922,
+    -0.39299747928349266,
+    0.004692678524968235,
+    0.0551272915540488,
+    -0.763612106470135,
+    0.003806542088224932
+  ],
+  "train_ids": [
+    0,
+    1,
+    2,
+    5,
+    6,
+    7,
+    10,
+    11
+  ],
+  "unconstrained_best_validation_loss": 72.08979048529316,
+  "validation_ids": [
+    3,
+    8,
+    13,
+    18,
+    23,
+    28,
+    33,
+    38
+  ],
+  "validation_mean_bound": 2.0,
+  "variance_weight": 10.0,
+  "terminal_offsets_note": "Offsets of the last completed objective evaluation at the intentional early stop."
+}

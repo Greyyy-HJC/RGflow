@@ -8,6 +8,7 @@ to the fine measure. Both maps have analytic Jacobians relative to Haar.
 from __future__ import annotations
 
 import math
+from contextlib import nullcontext
 
 import torch
 from torch import nn
@@ -15,6 +16,98 @@ from torch.utils.checkpoint import checkpoint
 
 from .downsampling import _dagger
 from .linalg import matrix_product as _matrix_product
+
+EQUIVARIANT_COUPLING = "covariant_frame_mobius_monotone_cubic_v1"
+STABLE_COUPLING = "covariant_frame_mobius_monotone_cubic_fp64_v2"
+LEGACY_COUPLING = "mobius_monotone_cubic"
+
+
+def _cpu_staple_frame(staples):
+    """Inactive-context colour frame and a gauge-invariant degeneracy gate.
+
+    Ordered eigenvectors of C C† transform as G F D at a nondegenerate
+    spectrum. D contains arbitrary phases; the fibre map cancels them.
+    Repeated spectra use the identity map, without differentiating undefined
+    eigenvectors. Relative gaps smoothly suppress maps near this boundary.
+    """
+    # CUDA eigh allocates an impractically large solver workspace for the
+    # L24 batch of tiny matrices. CPU copies preserve the autograd graph.
+    output_device = staples.device
+    context = staples.cpu() if staples.is_cuda else staples
+    hermitian = context @ _dagger(context)
+    with torch.no_grad():
+        spectrum = torch.linalg.eigvalsh(hermitian)
+        magnitude = spectrum[..., -1].clamp_min(torch.finfo(spectrum.dtype).tiny)
+        regular = (spectrum[..., 1:] - spectrum[..., :-1]).amin(-1) > (
+            64 * torch.finfo(spectrum.dtype).eps * magnitude
+        )
+    frame = torch.eye(3, device=context.device, dtype=context.dtype).expand_as(context).clone()
+    gate = torch.zeros(context.shape[:-2], device=context.device, dtype=context.real.dtype)
+    if regular.any():
+        values, vectors = torch.linalg.eigh(hermitian[regular])
+        gaps = torch.stack((values[:, 1]-values[:, 0], values[:, 2]-values[:, 1],
+                            values[:, 2]-values[:, 0]), -1) / values[:, -1, None]
+        frame[regular] = vectors
+        gate[regular] = (gaps.square() / (gaps.square() + 1.e-6)).prod(-1)
+    return frame.to(output_device), gate.to(output_device)
+
+
+def covariant_staple_frame(staples):
+    """Covariant eigenframe; analytic CUDA 3x3 solve with CPU collision fallback.
+
+    The cubic spectrum and row-cross-product eigenvectors avoid CUDA's huge
+    batched eigh workspace. Column phases cancel in the physical update.
+    Near a repeated root, CPU eigh supplies the same ordered spectral frame.
+    All operations, including CPU fallback, retain their parameter gradients.
+    """
+    if not staples.is_cuda:
+        return _cpu_staple_frame(staples)
+    context = staples.to(torch.complex128)
+    matrix = _matrix_product(context, _dagger(context))
+    identity = torch.eye(3, device=context.device, dtype=context.dtype)
+    center = matrix.diagonal(dim1=-2, dim2=-1).real.mean(-1)
+    shifted = matrix-center[..., None, None]*identity
+    radius = torch.sqrt(shifted.abs().square().sum((-2, -1)).clamp_min(1.e-60)/6.)
+    normalized = shifted/radius[..., None, None]
+    # Explicit 3x3 determinant avoids a batched LU solver and its launches.
+    determinant = (
+        normalized[..., 0, 0]*(normalized[..., 1, 1]*normalized[..., 2, 2]-normalized[..., 1, 2]*normalized[..., 2, 1])
+        -normalized[..., 0, 1]*(normalized[..., 1, 0]*normalized[..., 2, 2]-normalized[..., 1, 2]*normalized[..., 2, 0])
+        +normalized[..., 0, 2]*(normalized[..., 1, 0]*normalized[..., 2, 1]-normalized[..., 1, 1]*normalized[..., 2, 0])
+    )
+    cubic = determinant.real/2.
+    # The analytic root has ill-conditioned derivatives at |cubic|=1.
+    # Test in detached coordinates, and never evaluate that branch there.
+    regular = ((center.detach() > 0.) & (cubic.detach().abs() < .99)
+               & (radius.detach() > 1.e-12*center.detach().abs()))
+    frame = identity.expand_as(context).clone()
+    gate = torch.zeros(context.shape[:-2], device=context.device, dtype=torch.float64)
+    if regular.any():
+        angle = torch.acos(cubic[regular])/3.
+        middle = center[regular]
+        spread = radius[regular]
+        low = middle+2*spread*torch.cos(angle+2*math.pi/3.)
+        high = middle+2*spread*torch.cos(angle)
+        values = torch.stack((low, 3*middle-low-high, high), -1)
+        vectors = []
+        for value in (low, high):
+            residual = matrix[regular]-value[:, None, None]*identity
+            crosses = torch.stack([torch.linalg.cross(residual[:, a], residual[:, b], dim=-1)
+                                   for a, b in [(0, 1), (0, 2), (1, 2)]], 1)
+            choice = crosses.abs().square().sum(-1).argmax(-1)
+            vector = crosses[torch.arange(len(choice), device=context.device), choice]
+            if vectors:
+                vector = vector-vectors[0]*(vectors[0].conj()*vector).sum(-1, keepdim=True)
+            vectors.append(vector/torch.linalg.vector_norm(vector, dim=-1, keepdim=True))
+        central = torch.linalg.cross(vectors[1], vectors[0], dim=-1).conj()
+        frame[regular] = torch.stack((vectors[0], central, vectors[1]), -1)
+        gaps = torch.stack((values[:, 1]-values[:, 0], values[:, 2]-values[:, 1],
+                            values[:, 2]-values[:, 0]), -1)/values[:, -1, None]
+        gate[regular] = (gaps.square()/(gaps.square()+1.e-6)).prod(-1)
+    if (~regular).any():
+        fallback, fallback_gate = _cpu_staple_frame(context[~regular])
+        frame[~regular], gate[~regular] = fallback, fallback_gate
+    return frame.to(staples.dtype), gate.to(staples.real.dtype)
 
 
 def quaternion_transport(a, b, scale, raw_shape, *, inverse=False, compute_logdet=True):
@@ -136,13 +229,18 @@ class SU3ConditionalFlow(nn.Module):
     the other quaternion components to stay on S^3. Both scale and shape
     depend only on rotation-invariant features, so the Jacobian is triangular.
 
-    SU(2) subgroups select a colour basis: this prototype is not exactly
-    gauge equivariant. Training/evaluation use gauge-invariant operators.
+    By default the SU(2) subgroups act in the covariant inactive-staple
+    eigenframe. Eigenvector phases cancel, giving local gauge equivariance.
+    The legacy fixed-colour coupling remains available for old checkpoints.
     """
 
     def __init__(self, sweeps=4, hidden=8, constrained=False, initial_scale=-0.35,
-                 long_staples=True):
+                 long_staples=True, coupling=EQUIVARIANT_COUPLING):
         super().__init__()
+        if coupling not in (EQUIVARIANT_COUPLING, STABLE_COUPLING, LEGACY_COUPLING):
+            raise ValueError(f"unknown coupling: {coupling}")
+        self.coupling = coupling
+        self.gauge_equivariant = coupling in (EQUIVARIANT_COUPLING, STABLE_COUPLING)
         self.sweeps = sweeps
         self.hidden = hidden
         self.constrained = constrained
@@ -158,6 +256,8 @@ class SU3ConditionalFlow(nn.Module):
             with torch.no_grad():
                 network[-1].bias[:3].fill_(initial_scale)
             self.scales.append(network)
+        if self.coupling == STABLE_COUPLING:
+            self.double()
 
     def _direction(self, links, sweep, direction, parity, inverse, compute_logdet=True):
         mask = coupling_mask(links.shape[2:6], direction, parity,
@@ -172,6 +272,10 @@ class SU3ConditionalFlow(nn.Module):
         staple_size = staples.abs().square().sum((-2, -1)) / 3.0
         long_size = long.abs().square().sum((-2, -1)) / 3.0
         overlap = (nearest * long.conj()).sum((-2, -1)) / 3.0
+        if self.gauge_equivariant:
+            frame, gate = covariant_staple_frame(staples)
+            link = _matrix_product(_dagger(frame), link)
+            staples = _matrix_product(_dagger(frame), staples)
         coordinates = torch.meshgrid(*[torch.arange(n, device=links.device) % 2
                                        for n in links.shape[2:6]], indexing="ij")
         parities = torch.stack(coordinates, -1)[mask].to(links.real.dtype)
@@ -184,15 +288,24 @@ class SU3ConditionalFlow(nn.Module):
             matrix = _matrix_product(link, _dagger(staples))
             a = (matrix[..., first, first] + matrix[..., second, second].conj()) / 2.0
             b = (matrix[..., first, second] - matrix[..., second, first].conj()) / 2.0
-            norm = torch.sqrt(a.abs().square() + b.abs().square()).clamp_min(1.e-12)
-            a, b = a / norm, b / norm
+            norm_square = a.abs().square() + b.abs().square()
+            nonzero = norm_square > 1.e-24
+            norm = torch.sqrt(norm_square.clamp_min(1.e-24))
+            denominator = norm
+            a = torch.where(nonzero, a / denominator, torch.ones_like(a))
+            b = torch.where(nonzero, b / denominator, torch.zeros_like(b))
             features = torch.cat((torch.stack((norm, staple_size, long_size,
                                               overlap.real, overlap.imag), -1), parities), -1)
             index = [(0, 1), (0, 2), (1, 2)].index((first, second))
             parameters = self.scales[sweep](features)
             scale = parameters[..., index].clamp(-2., 2.)
+            shape = parameters[..., index+3]
+            if self.gauge_equivariant:
+                scale, shape = scale * gate, shape * gate
+            scale = torch.where(nonzero, scale, torch.zeros_like(scale))
+            shape = torch.where(nonzero, shape, torch.zeros_like(shape))
             new_a, new_b, change = quaternion_transport(
-                a, b, scale, parameters[..., index+3], inverse=inverse, compute_logdet=compute_logdet,
+                a, b, scale, shape, inverse=inverse, compute_logdet=compute_logdet,
             )
             # Q_new Q_old^dagger, acting on the two selected rows of U.
             rotate_a = new_a * a.conj() + new_b * b.conj()
@@ -204,12 +317,16 @@ class SU3ConditionalFlow(nn.Module):
             link = torch.stack(rows, -2)
             if compute_logdet:
                 logdet = logdet + change.sum(-1)
+        if self.gauge_equivariant:
+            link = _matrix_product(frame, link)
         updated = links[:, direction].clone()
         updated[:, mask] = link
         result = torch.stack([updated if mu == direction else links[:, mu] for mu in range(4)], 1)
         return result, logdet
 
     def forward(self, links, *, inverse=False, compute_logdet=True):
+        if self.coupling == STABLE_COUPLING:
+            links = links.to(torch.complex128)
         batched = links.ndim == 8
         links = links if batched else links.unsqueeze(0)
         logdet = torch.zeros(len(links), dtype=links.real.dtype, device=links.device) if compute_logdet else None
@@ -219,10 +336,16 @@ class SU3ConditionalFlow(nn.Module):
             operations.reverse()
         for sweep, direction, parity in operations:
             if self.training and torch.is_grad_enabled():
-                links, change = checkpoint(
-                    lambda value, s=sweep, d=direction, p=parity:
-                    self._direction(value, s, d, p, inverse, compute_logdet), links, use_reentrant=False
-                )
+                # Each L24 double-precision checkpoint input is 184 MiB;
+                # 64 substeps otherwise retain over 11 GiB on the GPU.
+                # Offload these exact inputs; recompute one coupling for VJP.
+                storage = (torch.autograd.graph.save_on_cpu(pin_memory=True)
+                           if links.is_cuda and self.coupling == STABLE_COUPLING else nullcontext())
+                with storage:
+                    links, change = checkpoint(
+                        lambda value, s=sweep, d=direction, p=parity:
+                        self._direction(value, s, d, p, inverse, compute_logdet), links, use_reentrant=False
+                    )
             else:
                 links, change = self._direction(links, sweep, direction, parity, inverse, compute_logdet)
             if compute_logdet:
@@ -234,6 +357,8 @@ class SU3ConditionalFlow(nn.Module):
 
     def sample(self, coarse, *, generator=None, compute_logdet=True):
         """Conditional inverse-blocking sample; normalized-Haar base log p=0."""
+        if self.coupling == STABLE_COUPLING:
+            coarse = coarse.to(torch.complex128)
         base = constrained_haar_lift(coarse, generator=generator)
         smeared, logdet = self(base, compute_logdet=compute_logdet)
         return smeared, -logdet if compute_logdet else None
@@ -242,3 +367,61 @@ class SU3ConditionalFlow(nn.Module):
         """Conditional density on the fixed blocking fibre (Haar measure)."""
         _, inverse_logdet = self.inverse(smeared)
         return inverse_logdet
+
+
+def flow_roundtrip_check(flow, coarse=None):
+    """Check the complete trained map, not just individual subgroup inverses.
+
+    Deep contractions can amplify floating-point errors even when every local
+    inverse passes. Training and calibration use this to reject such states.
+    Local generators and a forked CPU RNG leave training random draws unchanged.
+    """
+    devices = [("cpu", torch.complex128, 1.e-10, 1.e-8)]
+    if next(flow.parameters()).is_cuda:
+        devices.append(("cuda", torch.complex64, 3.e-4, 3.e-2))
+    records = []
+    with torch.no_grad(), torch.random.fork_rng(devices=[]):
+        for device, dtype, link_tolerance, density_tolerance in devices:
+            model = SU3ConditionalFlow(sweeps=flow.sweeps, hidden=flow.hidden,
+                                       constrained=flow.constrained, long_staples=flow.long_staples,
+                                       coupling=flow.coupling).to(device).eval()
+            model = model.double() if dtype == torch.complex128 else model
+            model.load_state_dict(flow.state_dict())
+            generator = torch.Generator(device=device).manual_seed(381)
+            small_coarse = haar_links((1, 4, 2, 2, 2, 2), device=device, dtype=dtype, generator=generator)
+            links = constrained_haar_lift(small_coarse, generator=generator)
+            output, forward = model(links)
+            recovered, backward = model.inverse(output)
+            gauge_dtype = output.dtype
+            gauge = haar_links((1, 4, 4, 4, 4), device=device, dtype=gauge_dtype, generator=generator)
+            current = links.to(gauge_dtype)
+            gauged = torch.stack([gauge @ current[:, mu] @ _dagger(torch.roll(gauge, -1, 4-mu))
+                                  for mu in range(4)], 1)
+            gauged_output, gauge_density = model(gauged)
+            expected = torch.stack([gauge @ output[:, mu] @ _dagger(torch.roll(gauge, -1, 4-mu))
+                                    for mu in range(4)], 1)
+            inverse_gauged, _ = model.inverse(expected)
+            expected_inverse = torch.stack([gauge @ recovered[:, mu] @ _dagger(torch.roll(gauge, -1, 4-mu))
+                                            for mu in range(4)], 1)
+            if flow.coupling == STABLE_COUPLING:
+                link_tolerance, density_tolerance = 1.e-10, 1.e-8
+            error = float((recovered-links).abs().max())
+            density_error = float((forward+backward).abs().max())
+            gauge_error = float((gauged_output-expected).abs().max())
+            inverse_gauge_error = float((inverse_gauged-expected_inverse).abs().max())
+            density_gauge_error = float((forward-gauge_density).abs().max())
+            records.append({"device": device, "roundtrip_error": error,
+                            "logdet_roundtrip_error": density_error,
+                            "gauge_error": gauge_error, "inverse_gauge_error": inverse_gauge_error,
+                            "logdet_gauge_error": density_gauge_error,
+                            "passed": (max(error, gauge_error, inverse_gauge_error) < link_tolerance
+                                       and max(density_error, density_gauge_error) < density_tolerance)})
+        if coarse is not None:
+            generator = torch.Generator(device=device).manual_seed(8324)
+            source = constrained_haar_lift(coarse.to(device=device, dtype=output.dtype), generator=generator)
+            proposal, _ = model(source, compute_logdet=False)
+            recovered, _ = model.inverse(proposal, compute_logdet=False)
+            error = float((recovered-source).abs().max())
+            records.append({"device": device, "lattice_size": list(source.shape[-6:-2]),
+                            "roundtrip_error": error, "passed": error < link_tolerance})
+    return {"passed": all(row["passed"] for row in records), "records": records}

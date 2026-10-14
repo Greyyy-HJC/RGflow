@@ -1,0 +1,13 @@
+{
+  "python": "3.14.6",
+  "torch": "2.14.0+cu130",
+  "numpy": "2.5.3",
+  "scipy": "1.18.1",
+  "cuda": "13.0",
+  "gpu": "NVIDIA GeForce RTX 3060",
+  "tests": {
+    "passed": 59,
+    "command": ".venv/bin/pytest -q",
+    "seconds": 91.45
+  }
+}

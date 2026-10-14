@@ -128,9 +128,66 @@ actual two-flow proposals. Its default moment batch has 12 independent
 coarse sources, and four latent draws per training source plus fixed validation
 draws are cached after Flow 1 is frozen. Couplings use embedded SU(2) stereographic radial
 maps followed by bounded monotone cubic angle deformations, with analytic
-Haar Jacobians, including checkerboard-safe transverse
-length-three staples. The current colour-subgroup implementation is not
-exactly gauge equivariant.
+Haar Jacobians. Nearest-neighbour and transverse-distance-three staples
+contain only inactive links in each checkerboard substep. The revised
+coupling acts in the covariant eigenframe of the inactive staple context
+times its adjoint. Its conditioner is gauge invariant and eigenvector phases
+cancel, making both flows gauge equivariant. Repeated context spectra use
+the identity update; a relative-gap gate suppresses near-degenerate updates.
+CUDA uses a differentiable analytic 3x3 spectral solver with CPU fallback
+near repeated roots. Legacy checkpoints retain their original fixed-colour
+coupling through the saved coupling version.
+
+The `covariant_frame_mobius_monotone_cubic_fp64_v2` version retains double
+precision throughout both flows. The completed `equivariant_v2` experiment
+failed whole-flow inverse checks after calibration, despite accurate individual
+coupling inverses. The separate `L12_to_L24_2flow_stable_v3` continuation starts
+from its uncalibrated covariant checkpoint, uses stronger width fitting, and
+rejects updates that fail whole-flow numerical checks, including a physical
+L24 roundtrip. Its pipeline is `scripts/upsample/continue_stable_v3.sh`; current phase and
+logs are saved in the new run directory. This long continuation was stopped
+at the user's request before any new optimizer update. The old checkpoint
+semantics are preserved.
+Stable CUDA training offloads the exact checkpoint inputs to pinned CPU
+memory: retaining all 64 double-precision L24 fields on the GPU otherwise
+exhausts 12 GB. `scripts/upsample/check_training_memory.py` verifies a complete
+L24 moment VJP before training; offloaded gradients are checked against
+direct gradients in the tests.
+
+For a short experiment, `scripts/upsample/quick.py` reuses that checkpoint,
+scans one global scale offset per flow without backpropagation or a
+finite-difference Jacobian fit, and uses 4/4/12 train/validation/test sources.
+It preserves the covariant maps, double precision and final numerical checks.
+The short run is `L12_to_L24_2flow_stable_quick_v4`; its small-sample results
+are a pilot, rather than the earlier 60-source study. It completed in 14.4
+minutes, passes the numerical checks, and fails the fine distribution criterion.
+The first three generated fields agree with PyQUDA to machine precision.
+To reproduce:
+
+```bash
+.venv/bin/python scripts/upsample/quick.py --output artifacts/4dsu3/upsample/quick_reproduction --minutes 16
+```
+
+`scripts/upsample/overlap.py` fixes the stable uncalibrated Flow 1 and refits
+six offsets of the previously calibrated Flow 2: scale, cubic shape and
+long-staple weight in each of its two sweeps. It uses 8 training and 8
+validation sources, a 65-minute calibration budget, whole-flow stability
+checks and a final 60-source test. Feature weights stay fixed; no new gradient
+epochs or test-target fitting are performed. The independent run is
+`L12_to_L24_2flow_overlap_v5`.
+Checkpoint selection requires all validation mean shifts to stay within two
+target widths; the original stricter test acceptance criterion remains unchanged.
+Calibration also stops after six evaluations without validation improvement.
+The completed 60-source run has mean shifts of approximately 1.068, 0.513,
+0.425 and -0.130 target widths, with width ratios 1.727, 1.245, 0.914 and
+0.724. It gives rough distribution overlap and passes the numerical checks;
+the stricter complete mean/width criterion still fails. Calibration and
+measurement took 54.2 minutes, with 15 calibration evaluations and selection
+of evaluation 9.
+
+```bash
+.venv/bin/python scripts/upsample/overlap.py --output artifacts/4dsu3/upsample/overlap_reproduction
+```
 
 The default run uses held-out downsampled fine configurations as input,
 not independent coarse heatbath configurations. The same downsampling
@@ -140,7 +197,7 @@ the four existing operators and the same distribution criteria. No
 rethermalization or test-target fitting is performed.
 
 Results and cached smoothed fields are stored in
-`artifacts/4dsu3/upsample/L12_to_L24_2flow_v1/`. The frozen smoother uses
+`artifacts/4dsu3/upsample/L12_to_L24_2flow_equivariant_v2/`. The frozen smoother uses
 CPU SVD for projection because large batches of tiny 3x3 CUDA SVDs are
 slow on the RTX 3060; the default differentiable downsampling path is
 unchanged. Use `--evaluate-only --pyquda-check` to cross-check generated
@@ -154,6 +211,14 @@ held-out metrics. No operator rescaling or test-set fitting is applied.
 The refinement defaults to independent per-operator mean errors. Stage 2
 also supports `--anneal-init` to expand details before recontracting them
 through the last flow sweep; these are invertible flow couplings, not MCMC.
+Run `.venv/bin/python scripts/upsample/validate.py` on the final checkpoint
+to record CPU double-precision and CUDA single-precision gauge covariance,
+inverse covariance, roundtrips and full eight-dimensional Haar Jacobians.
+For the stable version, CUDA single-precision inputs are promoted and the
+reported computation and gauge transformations use double precision.
+Samplewise gauge tests transform the Haar details along with the coarse
+field; using the same random seed after a gauge transformation does not
+perform this detail transformation.
 
 `presentation/upsampling_2flow.ipynb` displays the training history,
 held-out final distributions, stage diagnostics and numerical checks.
@@ -162,7 +227,7 @@ measurements, provenance and both trained flow state dictionaries, so
 the executed report also works without the large ensembles. Set
 `RGFLOW_UPSAMPLE_RUN` to display another completed result directory.
 
-The initial two-flow prototype passes the one-target-sigma test for all four
+The old `L12_to_L24_2flow_v1` fixed-colour prototype passes the one-target-sigma test for all four
 held-out operator means, but **does not pass the full distribution criterion**:
 its width ratios are approximately 2.48, 2.38, 1.95 and 1.24. The first-stage
 smeared distributions and teacher-input diagnostics also retain bias. These

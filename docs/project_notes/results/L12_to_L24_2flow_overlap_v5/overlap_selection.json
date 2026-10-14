@@ -1,0 +1,85 @@
+{
+  "candidates": 15,
+  "eligible": 9,
+  "mean_bound": 2.0,
+  "selected": {
+    "baseline_checkpoint": "3c3fb5e5059c",
+    "epoch": 29,
+    "mean": [
+      0.6136296683407912,
+      0.41005875409072545,
+      0.21695934153654872,
+      6.783726834807994e-06
+    ],
+    "mean_metric": "diagonal",
+    "offsets": [
+      -0.1582177942752567,
+      -0.2916659063913645,
+      -0.08139839817262765,
+      0.04562942137400261,
+      -0.8155239721032482,
+      -0.01684206462894549
+    ],
+    "optimizer": "global_least_squares",
+    "phase": "generated_moments",
+    "seconds": 44.059828758239746,
+    "stability": {
+      "passed": true,
+      "records": [
+        {
+          "device": "cpu",
+          "gauge_error": 1.9092689056544208e-14,
+          "inverse_gauge_error": 5.408363224841141e-14,
+          "logdet_gauge_error": 4.547473508864641e-13,
+          "logdet_roundtrip_error": 2.2737367544323206e-13,
+          "passed": true,
+          "roundtrip_error": 3.766693408403553e-14
+        },
+        {
+          "device": "cuda",
+          "gauge_error": 7.8748100353809e-15,
+          "inverse_gauge_error": 3.214301779171159e-14,
+          "logdet_gauge_error": 0.0,
+          "logdet_roundtrip_error": 2.2737367544323206e-13,
+          "passed": true,
+          "roundtrip_error": 2.2726393447662765e-14
+        },
+        {
+          "device": "cuda",
+          "lattice_size": [
+            24,
+            24,
+            24,
+            24
+          ],
+          "passed": true,
+          "roundtrip_error": 2.92127160413552e-13
+        }
+      ]
+    },
+    "train_configurations": 8,
+    "train_loss": 28.414673667727797,
+    "validation_configurations": 8,
+    "validation_loss": 72.08979048529316,
+    "validation_mean": [
+      0.6136793053825972,
+      0.41001290164271376,
+      0.21696237925067519,
+      7.746320008556461e-06
+    ],
+    "validation_mean_shift": [
+      -0.13674524098977642,
+      -0.4992045382628264,
+      -0.09872035402817493,
+      0.06738676405832685
+    ],
+    "validation_std_ratio": [
+      2.8818643990017696,
+      2.1368075070368513,
+      1.3682568608160317,
+      0.9903100471531127
+    ],
+    "variance_weight": 10.0
+  },
+  "test_targets_used": false
+}

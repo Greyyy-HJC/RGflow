@@ -1,0 +1,111 @@
+{
+  "stout_v3": {
+    "architecture": {
+      "class": "StoutKernel",
+      "initial_weights": [
+        0.3,
+        0.65,
+        0.049,
+        0.001
+      ],
+      "output_channels": 4
+    },
+    "optimizer": {
+      "batch_size": 4,
+      "configs_per_epoch": 30,
+      "epochs": 12,
+      "learning_rate": 0.01,
+      "name": "Adam",
+      "patience": 12,
+      "seed": 1234,
+      "validation_configs": 12
+    },
+    "test_mean_shift_in_target_sigma": [
+      16.65549475262501,
+      -11.229228232440017,
+      -14.608048285016007,
+      0.10687226910656777
+    ],
+    "test_std_ratio": [
+      0.8154246170642957,
+      0.7845867841018339,
+      0.7255360226261087,
+      1.013687444451452
+    ]
+  },
+  "stout_polynomial_v2": {
+    "architecture": {
+      "class": "PolynomialStoutKernel",
+      "coefficients": [
+        0.025237735360860825,
+        -0.04155620560050011,
+        -0.005380608607083559,
+        -0.00031087224488146603
+      ],
+      "degree": 4,
+      "hook_coefficients": [],
+      "initial_coefficients": [
+        0.024257789712783397,
+        -0.04058063408163177,
+        -0.006213334768838696,
+        -0.00022166855755383235
+      ],
+      "initial_hook_coefficients": []
+    },
+    "optimizer": {
+      "batch_size": 4,
+      "configs_per_epoch": 30,
+      "epochs": 12,
+      "learning_rate": 0.001,
+      "name": "Adam",
+      "patience": 12,
+      "seed": 1234,
+      "validation_configs": 12
+    },
+    "test_mean_shift_in_target_sigma": [
+      -42.01755200168021,
+      -36.308837738026,
+      -25.999620212934456,
+      -0.10230688225763437
+    ],
+    "test_std_ratio": [
+      0.9319502279124676,
+      0.8189619687924145,
+      0.7645217532383979,
+      0.7066975489521435
+    ]
+  },
+  "polynomial_ls_v1": {
+    "architecture": {
+      "class": "PolynomialStoutKernel",
+      "initial_coefficients": [
+        0.021349080357132955,
+        -0.01908027157063272,
+        -0.002500323423535852,
+        -0.0001571102982509985
+      ],
+      "initial_hook_coefficients": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "coefficients": [
+        0.07631181680871162,
+        -0.01775081225054379,
+        -0.0033836010034977056,
+        1.6885247837187742e-05
+      ],
+      "hook_coefficients": [
+        0.05664801356061253,
+        0.0055703654621719716,
+        0.0007956400003060483
+      ]
+    },
+    "optimizer": {
+      "name": "least_squares",
+      "best_training_loss": 142.74479377816584,
+      "evaluations": 22,
+      "status": "warm-start checkpoint; switched to local nonlinear extension before final evaluation"
+    }
+  }
+}

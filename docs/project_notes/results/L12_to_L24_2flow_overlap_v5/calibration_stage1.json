@@ -1,0 +1,9 @@
+{
+  "best_offsets": [],
+  "best_validation_loss": null,
+  "bound": 0.0,
+  "evaluations": 0,
+  "message": "Flow 1 frozen at stable warm start",
+  "optimizer": "frozen",
+  "parameters": 0
+}

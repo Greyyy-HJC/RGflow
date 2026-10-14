@@ -1,0 +1,64 @@
+{
+  "baseline_checkpoint": "e15801c27e40",
+  "baseline_validation_loss": 820241.535010844,
+  "best_offsets": [
+    0.05
+  ],
+  "best_validation_loss": 480646.031708147,
+  "bound": 0.05,
+  "evaluations": 4,
+  "message": "fixed scalar scan",
+  "optimizer": "scalar_grid",
+  "parameters": 1,
+  "seconds": 83.28784559597261,
+  "seed": 1234,
+  "stability_checks": [
+    {
+      "offset": 0.05,
+      "passed": true,
+      "records": [
+        {
+          "device": "cpu",
+          "gauge_error": 2.9688088179426015e-15,
+          "inverse_gauge_error": 2.886579864025407e-15,
+          "logdet_gauge_error": 5.684341886080802e-14,
+          "logdet_roundtrip_error": 8.242295734817162e-13,
+          "passed": true,
+          "roundtrip_error": 4.342661167468608e-15
+        },
+        {
+          "device": "cuda",
+          "gauge_error": 1.8126324738138794e-15,
+          "inverse_gauge_error": 2.3001988486260516e-15,
+          "logdet_gauge_error": 5.684341886080802e-14,
+          "logdet_roundtrip_error": 8.810729923425242e-13,
+          "passed": true,
+          "roundtrip_error": 2.1154524260844984e-15
+        },
+        {
+          "device": "cuda",
+          "lattice_size": [
+            24,
+            24,
+            24,
+            24
+          ],
+          "passed": true,
+          "roundtrip_error": 8.329632753280111e-15
+        }
+      ]
+    }
+  ],
+  "train_ids": [
+    0,
+    1,
+    2,
+    5
+  ],
+  "validation_ids": [
+    3,
+    8,
+    13,
+    18
+  ]
+}

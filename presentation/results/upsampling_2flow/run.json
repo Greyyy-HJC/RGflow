@@ -1,5 +1,6 @@
 {
   "arguments": {
+    "coupling": "covariant_frame_mobius_monotone_cubic_fp64_v2",
     "device": "cuda",
     "downsampling_run": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/downsample/L24_beta6p20_to_L12_beta5p80_polynomial_local_ls_v2",
     "epochs": 4,
@@ -8,22 +9,27 @@
     "fine_moment_configs": 12,
     "fine_sweeps": 2,
     "learning_rate": 0.01,
+    "mean_metric": "covariance",
     "moment_configs": 6,
     "moment_epochs": 20,
-    "output": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/upsample/L12_to_L24_2flow_v1",
+    "output": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/upsample/L12_to_L24_2flow_overlap_v5",
     "pyquda_check": true,
+    "require_stable_inverse": false,
     "resume": false,
     "seed": 1234,
+    "skip_evaluation": false,
     "smeared_moment_epochs": 20,
+    "stability_coarse_file": null,
     "sweeps": 8,
     "test_configs": 60,
-    "train_configs": 12,
+    "train_configs": 8,
     "transport_epochs": 3,
-    "validation_configs": 8
+    "validation_configs": 8,
+    "variance_weight": 1.0
   },
   "base": "independent normalized Haar SU(3) details",
-  "checkpoint_sha256": "cc078b4c5b409330ca043e8ecdc8edeb3ac93b96d4dbb9326d79e1d58566213d",
-  "coupling": "mobius_monotone_cubic",
+  "checkpoint_sha256": "5ffe6ef69e3eea0b1dbf085d42645db1ec2abf30d4e107e302a9bf9762965867",
+  "coupling": "covariant_frame_mobius_monotone_cubic_fp64_v2",
   "data_split": {
     "test": [
       4,
@@ -3644,7 +3650,7 @@
     "storage": "NERSC IEEE32 little-endian 3x3",
     "warmup_steps": 1000
   },
-  "gauge_equivariant": false,
+  "gauge_equivariant": true,
   "method": "conditional Haar-fibre likelihood + paired and operator transport",
   "stage1_flowed_links_per_cell": 56,
   "stage1_free_links_per_cell": 60,
@@ -3718,11 +3724,7 @@
     6,
     7,
     10,
-    11,
-    12,
-    15,
-    16,
-    17
+    11
   ],
   "validation_indices": [
     3,

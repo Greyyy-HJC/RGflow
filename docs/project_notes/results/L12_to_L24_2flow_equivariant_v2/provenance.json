@@ -1,0 +1,12 @@
+{
+  "base_revision": "916744d2d99d946b8b115c4e3474226835788639",
+  "source_sha256": {
+    "src/rgflow/su3/upsampling.py": "8ba4e4a3abee2e00ad07ad9c322ddd34557d79b534bb14c3d56dd63b440a1059",
+    "scripts/upsample/train.py": "ef4bf4aef1649ce1ee23b596ede9746feac1f7c07a3663c20e9090a780237377",
+    "scripts/upsample/calibrate.py": "e7d7ba87cb7505428297a24eb3659a1d160e6504fe99f096435140419213cfa6",
+    "scripts/upsample/validate.py": "55f6310c90f53cf66c75d975de5e532228c61dfe64613d52210088fad068a773"
+  },
+  "checkpoint_sha256": "9b8ac9b0efe8a9996dd0a7d11fb49f49627e60f5b0de02832f0ba357d5f0851d",
+  "numerical_report_matches_checkpoint": false,
+  "downsampling_checkpoint_sha256": "0ce8f2ce73acf6fdf3f3d40f7ac729b7d8a164b37e35b49b9bf269e84d25cd8a"
+}

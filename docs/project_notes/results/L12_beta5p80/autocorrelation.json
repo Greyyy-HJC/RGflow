@@ -1,0 +1,29 @@
+{
+  "ensemble": "L12_beta5p80",
+  "method": "normalized sample ACF with Geyer initial-positive-pair tau_int",
+  "pointwise_95_white_noise_limit": 0.11316065276116663,
+  "simultaneous_95_white_noise_limit": 0.17771349774447978,
+  "simultaneous_comparisons": 24,
+  "confidence_sample_count": 300,
+  "interpretation": "These data test correlations at multiples of 100 compound steps; they cannot resolve the autocorrelation time below that spacing.",
+  "observables": {
+    "plaquette": {
+      "observable": "plaquette",
+      "saved_configurations": 300,
+      "compound_steps_between_saved_configurations": 100,
+      "lag_1_autocorrelation": -0.03972307650731089,
+      "integrated_autocorrelation_time_saved_lags": 0.5,
+      "statistical_inefficiency": 1.0,
+      "effective_sample_size": 300.0
+    },
+    "W22": {
+      "observable": "20-step APE-smeared W(2,2)",
+      "saved_configurations": 300,
+      "compound_steps_between_saved_configurations": 100,
+      "lag_1_autocorrelation": -0.05496138647094478,
+      "integrated_autocorrelation_time_saved_lags": 0.5,
+      "statistical_inefficiency": 1.0,
+      "effective_sample_size": 300.0
+    }
+  }
+}
