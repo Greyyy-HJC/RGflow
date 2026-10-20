@@ -14,13 +14,13 @@ import torch
 from scipy.optimize import least_squares
 
 from rgflow.su3.downsampling import block_links
-from rgflow.su3.observables import observable_vector_torch
-from rgflow.su3.training import _covariance_inverse, _stats, _write_json, VARIANCE_EPS
+from rgflow.su3.observables import DOWNSAMPLING_OBSERVABLES, TRAINING_OBSERVABLES, observable_vector_torch
+from rgflow.su3.training import _covariance_inverse, _stats, _write_json
 from rgflow.su3.upsampling import LEGACY_COUPLING, STABLE_COUPLING, SU3ConditionalFlow, constrained_haar_lift, flow_roundtrip_check
 
 ROOT = Path(__file__).resolve().parents[2]
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--run', type=Path, default=ROOT/'artifacts/4dsu3/upsample/L12_to_L24_2flow_equivariant_v2')
+parser.add_argument('--run', type=Path, default=ROOT/'artifacts/4dsu3/upsample/L12_to_L24_2flow_v6_8ops_6train')
 parser.add_argument('--stage', type=int, choices=[1, 2], required=True)
 parser.add_argument('--train-configs', type=int, default=12)
 parser.add_argument('--validation-configs', type=int, default=8)
@@ -56,11 +56,13 @@ history = json.loads((args.run/'history.json').read_text())
 phase = 'smeared_moments' if args.stage == 1 else 'generated_moments'
 epoch_offset = max([row['epoch'] for row in history if row['phase'] == phase], default=0)
 targets = np.load(args.run/'targets.npz')
+np.testing.assert_array_equal(targets['observable_names'], DOWNSAMPLING_OBSERVABLES)
+columns = [DOWNSAMPLING_OBSERVABLES.index(name) for name in TRAINING_OBSERVABLES]
 indices = targets['indices'].tolist()
 train_ids = [i for i in indices if i % 5 in [0, 1, 2]][:args.train_configs]
 val_ids = [i for i in indices if i % 5 == 3][:args.validation_configs]
 kind = 'smeared' if args.stage == 1 else 'fine'
-references = {split: targets[kind][[indices.index(i) for i in ids]]
+references = {split: targets[kind][[indices.index(i) for i in ids]][:, columns].astype(np.float64)
               for split, ids in [('train', train_ids), ('validation', val_ids)]}
 inputs = {'train': [], 'validation': []}
 with torch.no_grad():
@@ -90,20 +92,23 @@ def set_parameters(x):
 
 def measure(split):
     with torch.no_grad():
-        return np.array([observable_vector_torch(model(value.to(device), compute_logdet=False)[0]).cpu().numpy()
+        return np.array([observable_vector_torch(model(value.to(device), compute_logdet=False)[0],
+                                                names=TRAINING_OBSERVABLES).cpu().numpy()
                          for value in inputs[split]], dtype=np.float64)
 
 
 def residual(values, split):
     target = references[split].astype(np.float64)
-    mean, _, logvar = _stats(target)
+    # Keep the training target's scale fixed for both splits, including tiny |P|^4 variances.
+    epsilon = 1.e-12 * references['train'].var(0, ddof=1)
+    mean, _, logvar = _stats(target, epsilon)
     mean_difference = values.mean(0)-mean
     if args.mean_metric == 'diagonal':
         mean_residual = mean_difference/target.std(0, ddof=1)
     else:
-        _, inverse = _covariance_inverse(target, target, .1)
+        _, inverse = _covariance_inverse(target, target, .1, observable_scale=target.std(0, ddof=1))
         mean_residual = np.linalg.cholesky(inverse).T @ mean_difference
-    widths = args.variance_weight**.5*(np.log(values.var(0, ddof=1)+VARIANCE_EPS)-logvar)
+    widths = args.variance_weight**.5*(np.log(values.var(0, ddof=1)+epsilon)-logvar)
     return np.r_[mean_residual, widths]
 
 
@@ -117,6 +122,7 @@ best_offsets = np.zeros(6)
 evaluations = 0
 last_improvement = 0
 last_x, last_residual = None, None
+stopping_reason = None
 
 
 def objective(x):
@@ -174,8 +180,12 @@ def jacobian(x):
 
 
 def stop_at_budget(x):
-    if ((args.minutes and time.monotonic()-started >= args.minutes*60)
-            or (args.patience and evaluations-last_improvement >= args.patience)):
+    global stopping_reason
+    if args.minutes and time.monotonic()-started >= args.minutes*60:
+        stopping_reason = 'time budget'
+    elif args.patience and evaluations-last_improvement >= args.patience:
+        stopping_reason = 'validation patience'
+    if stopping_reason is not None:
         raise StopIteration
 
 
@@ -203,9 +213,13 @@ _write_json(args.run/f'calibration_stage{args.stage}.json',
              'baseline_checkpoint': baseline_hash,
              'minutes_budget': args.minutes, 'elapsed_seconds': time.monotonic()-started,
              'patience': args.patience,
-             'stopping_reason': ('validation patience' if args.patience and evaluations-last_improvement >= args.patience
-                                 else 'time budget' if result.status == -2 else result.message),
+             'stopping_reason': stopping_reason or result.message,
+             'optimizer_status': int(result.status), 'optimizer_converged': bool(result.success),
              'evaluations': evaluations, 'terminal_offsets': result.x.tolist(),
              'best_offsets': best_offsets.tolist(),
+             'observable_names': DOWNSAMPLING_OBSERVABLES,
+             'training_observables': TRAINING_OBSERVABLES,
+             'held_out_observables': [name for name in DOWNSAMPLING_OBSERVABLES if name not in TRAINING_OBSERVABLES],
+             'test_targets_used': False,
              'message': result.message})
 print('BEST VALIDATION', best_loss, flush=True)

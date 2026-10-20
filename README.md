@@ -29,7 +29,91 @@ The root `.venv/` directory is ignored by Git. There is no committed
 The implementation will be added under `src/rgflow/su3/` as the study is
 developed.
 
+## Topological charge under gradient flow
+
+`presentation/topo_charge.ipynb` plots unrounded clover topological charge
+against Wilson gradient-flow time `t/a^2` on L24 at beta 6.20. Reference
+plots retain the 30-source subset (IDs 0, 10, ..., 290) and all 300 fields.
+The current two-flow comparison pairs all 60 held-out sources (IDs 4, 9,
+..., 299): original reference, the exact v4-smeared reference, Flow 1 and
+Flow 2 outputs. The v4 smoother was fitted against the lattice-spacing-matched
+L12 reference at beta 5.775. Each field starts Wilson flow at time zero.
+All branches use double-precision RK3, integration step 0.02, maximum time
+5 and measurements every 0.1. The generated stages share colors and axes.
+
+```bash
+.venv/bin/python scripts/heatbath/topo_charge.py
+.venv/bin/python scripts/heatbath/topo_charge.py --stride 1 --samples 300 --output presentation/results/topo_charge/full --reuse-from presentation/results/topo_charge
+.venv/bin/python scripts/upsample/measure_topology.py
+.venv/bin/python scripts/upsample/validate_topology.py
+.venv/bin/python scripts/upsample/update_topo_notebook.py
+.venv/bin/python temp/execute_topo_charge_notebook.py
+```
+
+Scalar measurements are saved after each field and matching incomplete runs
+resume. Original gauge files are read only; the two generated stages and
+paired smeared reference are exported as FP64 NERSC fields for their common
+measurement. The stage bundle records source IDs, latent seeds, checkpoint
+hashes, unrounded charge arrays, SU(3) preparation changes and half-step checks.
+
+The same notebook continues the last reference field (the 300th configuration,
+file index 299) with 300 Wilson pure-gauge HMC trajectories at beta=6.20.
+It adds a plaquette history and one total charge-evolution plot for the 30
+chain states saved at trajectories 10, 20, ..., 300. Each trajectory includes
+a Metropolis decision, has MD length 1, and uses 50 second-order Omelyan
+steps. Rejections retain the previous field and count as trajectories.
+Each proposal is projected to SU(3) with tolerance 2e-15 before the final
+Hamiltonian evaluation and Metropolis decision, matching the native PyQUDA example.
+The temporary fields use FP64 NERSC storage; a field/RNG checkpoint allows
+resuming at each saved group of 10.
+
+```bash
+.venv/bin/python scripts/heatbath/hmc_continue.py
+.venv/bin/python scripts/heatbath/topo_charge.py --input temp/topo_charge_hmc_L24 --stride 1 --samples 30 --output presentation/results/topo_charge/hmc/flow
+```
+
+The chain history and added figures are saved in
+`presentation/results/topo_charge/hmc/`; the temporary gauge fields and
+checkpoint are in `temp/topo_charge_hmc_L24/`.
+
 ## SU(3) downsampling
+
+The current coarse reference is `L12_beta5p775` (300 configurations), replacing
+`L12_beta5p80` in the downsampling defaults. The same static-potential analysis
+gives `a_c = 0.144038(1749) fm` and `a_c/a_f = 1.9940(249)`, compared with
+the previous ratio `1.9009(230)`. The target is twice the measured fine spacing,
+`0.144470 fm`. The beta scan and selection are recorded in
+`docs/project_notes/results/selected_downsampling_run.json`; the initial estimate
+uses the relative [Necco–Sommer scale relation, Eq. (2.6)](https://arxiv.org/pdf/hep-lat/0108008),
+anchored to the original measured coarse spacing. Direct measurements select
+the new reference. Previous ensembles and completed runs remain available as
+historical results.
+
+The production stout experiment measures eight operators: W11, W12, W13,
+W22, W23, W33, Polyakov second moment and Polyakov fourth moment. Only W11,
+W12, W23, W33 and the two Polyakov moments enter training. W13 and W22 are
+held out to test generalization across operators. The fourth moment is the
+average of the four directional global Polyakov fourth powers, rather than
+the square of the direction-averaged second moment.
+
+Reproduce the fresh perturbative-initialized fit (zero hook/local initial
+coefficients), using a new output directory for another reproduction:
+
+```bash
+OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python scripts/downsample/fit_polynomial.py --hook --local --workers 4 --device cuda --max-nfev 100 --pyquda-check
+```
+
+It fits six means and six log variances using 60 fixed fine training fields
+and all 180 coarse training references, with the original 180/60/60 split.
+Each variance floor is relative to that operator's training target variance;
+this preserves the tiny Polyakov fourth-moment fluctuations. All eight
+operators are evaluated after freezing the checkpoint. Raw measurements,
+operator roles, source snapshots and actual stopping reason are saved in
+`artifacts/4dsu3/downsample/L24_beta6p20_to_L12_beta5p775_polynomial_local_ls_v4_8ops_6train/`.
+The stout notebook shows all eight and reports distribution checks separately
+for the six fitted operators, the two unseen operators and the full set.
+The shared measurement API retains its four-operator default for archived
+upsampling experiments; pass `names` to select the extended set.
 
 Install the optional Torch training dependency and run the L24 to L12
 experiment with:
@@ -39,7 +123,7 @@ experiment with:
 .venv/bin/python scripts/downsample/train.py --method stout
 ```
 
-The default `stout-polynomial` run first optimizes the perturbative
+The legacy Adam `stout-polynomial` run first optimizes the perturbative
 Brillouin-zone residual and then directly fits the four global coefficients in
 the covariant polynomial smoother
 `[1 + a1 L + a2 L^2 + a3 L^3 + a4 L^4] U`. The projected field is then
@@ -82,16 +166,34 @@ test configurations are used only for the final evaluation.
 
 Add `--local` to fit four plaquette-conditioned polynomial coefficients.
 Their local scalar is the mean adjacent plaquette trace minus one, so
-these terms preserve the weak-field linear kernel. For example, refine
-the hook-polynomial checkpoint with:
+these terms preserve the weak-field linear kernel. The archived four-operator refinement used the previous local-polynomial
+checkpoint against the new coarse reference:
 
 ```bash
-OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python scripts/downsample/fit_polynomial.py --hook --local --initial-run artifacts/4dsu3/downsample/L24_beta6p20_to_L12_beta5p80_polynomial_ls_v1 --output artifacts/4dsu3/downsample/L24_beta6p20_to_L12_beta5p80_polynomial_local_ls_v2
+OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python scripts/downsample/fit_polynomial.py --hook --local --initial-run artifacts/4dsu3/downsample/L24_beta6p20_to_L12_beta5p80_polynomial_local_ls_v2 --pyquda-check --workers 4
 ```
 
-`presentation/downsample_stout.ipynb` displays this run's fit history,
+`presentation/downsample_stout.ipynb` displays the selected production run's fit history,
 complete held-out test distributions, and mean/width acceptance checks.
 Set `RGFLOW_DOWNSAMPLE_RUN` to inspect another completed polynomial run.
+The fitter measures the requested `--coarse-dir` with PyQUDA on every run;
+naive blocking is also remeasured for all eight operators. `--reference-run`
+is an optional provenance reference and supplies no measurement cache.
+It saves both source manifests with the new checkpoint. The optional PyQUDA
+check compares the complete projected map on three held-out configurations
+with the retained-basis measurements, using CPU polar projection.
+`--workers 4` evaluates independent training configurations concurrently on
+the CPU. With multiple workers, basis construction and final eight-operator
+evaluation also run across the CPU workers; `--device` selects the full-map
+PyQUDA cross-check backend. Single-worker mode uses `--device` throughout.
+The default single-worker mode performs all stages on `--device`.
+For a completed polynomial checkpoint, evaluate all 300 configurations with
+the same retained basis in parallel on the CPU, then cross-check three
+held-out configurations with the full map and PyQUDA:
+
+```bash
+OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python scripts/downsample/evaluate.py --device cpu --workers 4 --pyquda-configs 3
+```
 
 The perturbative initialization uses a consistent left-endpoint Fourier
 convention. For the covariant operator in Eq. (2.39) of the blocking note,
@@ -111,124 +213,55 @@ successful distribution match.
 
 ## Two-flow SU(3) upsampling
 
-Train on the existing L24 heatbath ensemble and the frozen projected
-polynomial smoothing checkpoint:
+The current experiment uses the selected `v4_8ops_6train` downsampling
+checkpoint, fitted against the lattice-spacing-matched L12 reference at
+beta 5.775. Both flows start from fresh neural weights, seed 1234. Flow 1
+trains conditional Haar likelihood for four epochs, then fits six shared
+scale/shape/staple offsets. Flow 2 trains paired transport for three epochs,
+then fits its six offsets on generated Flow-1 inputs. Each fit uses 12 training
+and eight validation sources, at most 30 objective evaluations and 65 minutes,
+with six evaluations of validation patience.
+
+Moment fitting and checkpoint selection use W11, W12, W23, W33, Polyakov
+|P|² and |P|⁴. W13 and W22 are held out. Means are normalized by target
+standard deviations, and log variances use a per-operator relative floor.
+Final evaluation measures all eight operators on all 60 test sources with
+fresh Haar noise and three independent PyQUDA checks. Acceptance requires
+mean shifts within one target standard deviation and width ratios in
+[0.8, 1.2], reported separately for training, held-out and all operators.
+
+The coarse input is `C = block(smear(U))` from the held-out fine sources.
+The native L12 reference sets the downsampling target; this experiment does
+not measure transfer from independently generated native coarse inputs.
+No heatbath/HMC rethermalization is applied after either flow.
+
+Warm-up training uses single precision; calibration and generation use double
+precision after exact parameter promotion. Inactive-staple frames define
+embedded SU(2) radial and monotone cubic couplings with analytic Haar
+Jacobians. Flow 1 retains the four coarse two-link products. Flow 2 transports
+all fine links. Inverse, covariance and density checks gate updates and
+calibration; the final checkpoint also receives full L24 checks.
 
 ```bash
-OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python scripts/upsample/train.py
+.venv/bin/python scripts/upsample/rerun.py
 .venv/bin/python scripts/upsample/make_notebook.py
+.venv/bin/python scripts/upsample/measure_topology.py
+.venv/bin/python scripts/upsample/update_topo_notebook.py
+.venv/bin/python temp/execute_topo_charge_notebook.py
 ```
 
-Flow 1 draws 60 Haar detail links per coarse cell, fixes the four retained
-two-link products to the input coarse links, and trains a conditional flow
-with exact Haar likelihood, followed by generated-smeared operator fitting.
-Flow 2 is an invertible transport trained first
-on paired smeared/fine fields and then on the operator means and widths of
-actual two-flow proposals. Its default moment batch has 12 independent
-coarse sources, and four latent draws per training source plus fixed validation
-draws are cached after Flow 1 is frozen. Couplings use embedded SU(2) stereographic radial
-maps followed by bounded monotone cubic angle deformations, with analytic
-Haar Jacobians. Nearest-neighbour and transverse-distance-three staples
-contain only inactive links in each checkerboard substep. The revised
-coupling acts in the covariant eigenframe of the inactive staple context
-times its adjoint. Its conditioner is gauge invariant and eigenvector phases
-cancel, making both flows gauge equivariant. Repeated context spectra use
-the identity update; a relative-gap gate suppresses near-degenerate updates.
-CUDA uses a differentiable analytic 3x3 spectral solver with CPU fallback
-near repeated roots. Legacy checkpoints retain their original fixed-colour
-coupling through the saved coupling version.
+Training artifacts are under
+`artifacts/4dsu3/upsample/L12_to_L24_2flow_v6_8ops_6train/`.
+`presentation/upsampling_2flow.ipynb` shows the fresh training history,
+eight-operator raw and reference-standardized distributions, intermediate
+and teacher-input diagnostics, grouped acceptance and numerical checks.
+Its small result bundle is replaced when rebuilding the notebook.
 
-The `covariant_frame_mobius_monotone_cubic_fp64_v2` version retains double
-precision throughout both flows. The completed `equivariant_v2` experiment
-failed whole-flow inverse checks after calibration, despite accurate individual
-coupling inverses. The separate `L12_to_L24_2flow_stable_v3` continuation starts
-from its uncalibrated covariant checkpoint, uses stronger width fitting, and
-rejects updates that fail whole-flow numerical checks, including a physical
-L24 roundtrip. Its pipeline is `scripts/upsample/continue_stable_v3.sh`; current phase and
-logs are saved in the new run directory. This long continuation was stopped
-at the user's request before any new optimizer update. The old checkpoint
-semantics are preserved.
-Stable CUDA training offloads the exact checkpoint inputs to pinned CPU
-memory: retaining all 64 double-precision L24 fields on the GPU otherwise
-exhausts 12 GB. `scripts/upsample/check_training_memory.py` verifies a complete
-L24 moment VJP before training; offloaded gradients are checked against
-direct gradients in the tests.
-
-For a short experiment, `scripts/upsample/quick.py` reuses that checkpoint,
-scans one global scale offset per flow without backpropagation or a
-finite-difference Jacobian fit, and uses 4/4/12 train/validation/test sources.
-It preserves the covariant maps, double precision and final numerical checks.
-The short run is `L12_to_L24_2flow_stable_quick_v4`; its small-sample results
-are a pilot, rather than the earlier 60-source study. It completed in 14.4
-minutes, passes the numerical checks, and fails the fine distribution criterion.
-The first three generated fields agree with PyQUDA to machine precision.
-To reproduce:
-
-```bash
-.venv/bin/python scripts/upsample/quick.py --output artifacts/4dsu3/upsample/quick_reproduction --minutes 16
-```
-
-`scripts/upsample/overlap.py` fixes the stable uncalibrated Flow 1 and refits
-six offsets of the previously calibrated Flow 2: scale, cubic shape and
-long-staple weight in each of its two sweeps. It uses 8 training and 8
-validation sources, a 65-minute calibration budget, whole-flow stability
-checks and a final 60-source test. Feature weights stay fixed; no new gradient
-epochs or test-target fitting are performed. The independent run is
-`L12_to_L24_2flow_overlap_v5`.
-Checkpoint selection requires all validation mean shifts to stay within two
-target widths; the original stricter test acceptance criterion remains unchanged.
-Calibration also stops after six evaluations without validation improvement.
-The completed 60-source run has mean shifts of approximately 1.068, 0.513,
-0.425 and -0.130 target widths, with width ratios 1.727, 1.245, 0.914 and
-0.724. It gives rough distribution overlap and passes the numerical checks;
-the stricter complete mean/width criterion still fails. Calibration and
-measurement took 54.2 minutes, with 15 calibration evaluations and selection
-of evaluation 9.
-
-```bash
-.venv/bin/python scripts/upsample/overlap.py --output artifacts/4dsu3/upsample/overlap_reproduction
-```
-
-The default run uses held-out downsampled fine configurations as input,
-not independent coarse heatbath configurations. The same downsampling
-train/validation/test partition is retained. Final evaluation compares
-the generated fine fields with the held-out L24 heatbath fields using
-the four existing operators and the same distribution criteria. No
-rethermalization or test-target fitting is performed.
-
-Results and cached smoothed fields are stored in
-`artifacts/4dsu3/upsample/L12_to_L24_2flow_equivariant_v2/`. The frozen smoother uses
-CPU SVD for projection because large batches of tiny 3x3 CUDA SVDs are
-slow on the RTX 3060; the default differentiable downsampling path is
-unchanged. Use `--evaluate-only --pyquda-check` to cross-check generated
-operators with PyQUDA, and `--resume --epochs 0 --transport-epochs 0`
-`--smeared-moment-epochs 0` to extend only the generated-fine moment training.
-For faster deterministic refinement of six shared shift/shape/staple offsets,
-run `.venv/bin/python scripts/upsample/calibrate.py --stage 1`, then the same
-command with `--stage 2`. This fits fixed training draws and selects the
-checkpoint by validation loss; reevaluate afterwards to regenerate the
-held-out metrics. No operator rescaling or test-set fitting is applied.
-The refinement defaults to independent per-operator mean errors. Stage 2
-also supports `--anneal-init` to expand details before recontracting them
-through the last flow sweep; these are invertible flow couplings, not MCMC.
-Run `.venv/bin/python scripts/upsample/validate.py` on the final checkpoint
-to record CPU double-precision and CUDA single-precision gauge covariance,
-inverse covariance, roundtrips and full eight-dimensional Haar Jacobians.
-For the stable version, CUDA single-precision inputs are promoted and the
-reported computation and gauge transformations use double precision.
-Samplewise gauge tests transform the Haar details along with the coarse
-field; using the same random seed after a gauge transformation does not
-perform this detail transformation.
-
-`presentation/upsampling_2flow.ipynb` displays the training history,
-held-out final distributions, stage diagnostics and numerical checks.
-Its small `presentation/results/upsampling_2flow/` bundle includes the
-measurements, provenance and both trained flow state dictionaries, so
-the executed report also works without the large ensembles. Set
-`RGFLOW_UPSAMPLE_RUN` to display another completed result directory.
-
-The old `L12_to_L24_2flow_v1` fixed-colour prototype passes the one-target-sigma test for all four
-held-out operator means, but **does not pass the full distribution criterion**:
-its width ratios are approximately 2.48, 2.38, 1.95 and 1.24. The first-stage
-smeared distributions and teacher-input diagnostics also retain bias. These
-samples should not yet be treated as a heatbath-equivalent fine ensemble.
+Both generated stages are exported as FP64 NERSC fields with source IDs,
+latent seeds and checkpoint hashes. Double-precision SU(3) reunitarization
+prepares these fields for the same Wilson gradient flow used in
+`presentation/topo_charge.ipynb`: t/a² = 0–5, RK3 step 0.02, measurements
+every 0.1 and unrounded clover charge. That notebook shows both 60-curve
+stage plots and paired reference/stage comparisons. The measurement script
+replaces stale results when the smoother or flow checkpoint changes and
+resumes matching incomplete measurements.

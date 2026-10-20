@@ -1,0 +1,24 @@
+{
+  "checkpoint_sha256": "92a15eebdb830f1bfae8e7dbd270479f2893c95028c1fa0efbdf5d236421c733",
+  "scope": "first held-out source of each stage",
+  "stages": {
+    "flow1": {
+      "source_index": 4,
+      "production_epsilon": 0.02,
+      "check_epsilon": 0.01,
+      "t_max": 5.0,
+      "maximum_absolute_charge_difference": 0.0012656818062311004,
+      "final_charge_difference": -0.0012656818062311004,
+      "maximum_absolute_energy_difference": 2.2586536048141426e-06
+    },
+    "flow2": {
+      "source_index": 4,
+      "production_epsilon": 0.02,
+      "check_epsilon": 0.01,
+      "t_max": 5.0,
+      "maximum_absolute_charge_difference": 0.0008654095530147288,
+      "final_charge_difference": 9.191956791188005e-05,
+      "maximum_absolute_energy_difference": 2.045820870044679e-06
+    }
+  }
+}

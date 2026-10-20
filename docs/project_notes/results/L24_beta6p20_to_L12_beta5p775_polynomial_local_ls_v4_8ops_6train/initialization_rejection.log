@@ -1,0 +1,7 @@
+usage: fit_polynomial.py [-h] [--fine-dir FINE_DIR] [--coarse-dir COARSE_DIR]
+                         [--reference-run REFERENCE_RUN] [--output OUTPUT]
+                         [--train-configs TRAIN_CONFIGS] [--max-nfev MAX_NFEV]
+                         [--hook] [--local] [--device DEVICE]
+                         [--workers {1,2,4}] [--seed SEED]
+                         [--initial-run INITIAL_RUN] [--pyquda-check]
+fit_polynomial.py: error: initial checkpoint used held-out operators; use perturbative initialization

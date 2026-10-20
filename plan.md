@@ -1,8 +1,8 @@
 # 4D SU(3) research plan
 
 generate reference SU(3) ensembles using heatbath + overrelaxation: 
-- L24, beta = 6.20, ref lattice spacing a = 0.13613(19) fm, actual lattice spacing a = 0.07224 fm
-- L12, beta = 5.80, ref lattice spacing a = 0.06775(24) fm, actual lattice spacing a = 0.13732 fm
+- L24, beta = 6.20, ref lattice spacing a = 0.06775(24) fm, measured lattice spacing a = 0.0722350(2175) fm
+- L12, beta = 5.775, measured lattice spacing a = 0.144038(1749) fm, spacing ratio a_c/a_f = 1.9940(249); replaces beta = 5.80 with a = 0.137312(1608) fm
 
 - L16, beta = 5.95, ref lattice spacing a = 0.10208(25) fm, actual lattice spacing a = 0.1047 fm
 
@@ -20,3 +20,7 @@ generate reference SU(3) ensembles using heatbath + overrelaxation:
    - "match the coarse reference lattice" is defined as the minimize the covariance-weighted mismatch of some observables, i.e. loss function in docs/2608.28581.pdf (firstly try only the plaquette, 1*2 rectangle, 2*2 square and one long-distance observable)
 
    - use pyquda for measurements, use pytorch for CNN and training.
+
+### Completed eight-operator stout experiment
+
+Run `L24_beta6p20_to_L12_beta5p775_polynomial_local_ls_v4_8ops_6train` trains W11, W12, W23, W33, |P|² and |P|⁴ from fresh perturbative coefficients; W13 and W22 are held out. All 300 fields are evaluated with the frozen checkpoint, and the stout notebook shows eight-operator comparisons. Optimizer: 100 evaluations; converged = False.

@@ -1,0 +1,17 @@
+{
+  "configuration_index": 0,
+  "identity_field_initial_max_abs_charge": 0.0,
+  "identity_field_initial_max_abs_energy": 0.0,
+  "segmented_vs_continuous_charge_difference_at_t1": 0.0,
+  "segmented_vs_continuous_energy_difference_at_t1": 0.0,
+  "step_size_comparison": {
+    "reference_epsilon": 0.02,
+    "check_epsilon": 0.01,
+    "t_max": 5.0,
+    "max_abs_charge_difference": 2.1072518129994222e-05,
+    "final_charge_difference": 5.751873594084245e-08,
+    "max_abs_energy_difference": 6.507255087218056e-06,
+    "scope": "configuration 0000 only"
+  },
+  "validation_seconds": 109.21358204702847
+}

@@ -1,0 +1,30 @@
+{
+  "initial_training_objective": 400571.7289536466,
+  "frozen_training_objective": 47.62730233364444,
+  "best_recorded_training_objective": 47.62730233364444,
+  "objective_evaluations": 100,
+  "converged": false,
+  "stopping_reason": "The maximum number of function evaluations is exceeded.",
+  "checkpoint_sha256": "b28a519dbc839166b5df3455e85c9e58b3f0c06ce637bc1db961fd2393a6643e",
+  "acceptance_by_group": {
+    "training": {
+      "test_all_means_within_one_standard_error": false,
+      "test_all_means_within_one_target_sigma": true,
+      "test_all_std_ratios_within_20_percent": false,
+      "distribution_match": false
+    },
+    "held_out": {
+      "test_all_means_within_one_standard_error": false,
+      "test_all_means_within_one_target_sigma": false,
+      "test_all_std_ratios_within_20_percent": true,
+      "distribution_match": false
+    },
+    "all": {
+      "test_all_means_within_one_standard_error": false,
+      "test_all_means_within_one_target_sigma": false,
+      "test_all_std_ratios_within_20_percent": false,
+      "distribution_match": false
+    }
+  },
+  "regression_tests": "66 passed"
+}

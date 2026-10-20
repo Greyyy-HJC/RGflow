@@ -192,13 +192,14 @@ def _polynomial_blocked_observables(
     *,
     requires_grad: bool,
     batch_size: int = 1,
+    names=None,
 ) -> torch.Tensor:
     values = []
     context = torch.enable_grad() if requires_grad else torch.no_grad()
     with context:
         for links in _link_batches(paths, device, batch_size):
             blocked = smear_and_block(links, kernel)
-            values.append(observable_vector_torch(blocked))
+            values.append(observable_vector_torch(blocked, names=names))
             del links, blocked
     return torch.cat(values, dim=0)
 
@@ -217,37 +218,44 @@ def _baseline_logits(device: torch.device) -> torch.Tensor:
     return torch.tensor([40.0, -40.0, -40.0], dtype=torch.float32, device=device)
 
 
-def _covariance_inverse(coarse: np.ndarray, baseline: np.ndarray, shrinkage: float) -> tuple[np.ndarray, np.ndarray]:
+def _covariance_inverse(coarse: np.ndarray, baseline: np.ndarray, shrinkage: float, *, observable_scale: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
+    if observable_scale is not None:
+        coarse = coarse / observable_scale
+        baseline = baseline / observable_scale
     covariance = np.cov(coarse, rowvar=False, ddof=1) / len(coarse)
     covariance += np.cov(baseline, rowvar=False, ddof=1) / len(baseline)
     diagonal = np.diag(np.diag(covariance))
     covariance = (1.0 - shrinkage) * covariance + shrinkage * diagonal
     covariance += np.eye(covariance.shape[0]) * max(float(np.median(np.diag(covariance))), 1.0e-30) * 1.0e-8
-    return covariance, np.linalg.inv(covariance)
+    inverse = np.linalg.inv(covariance)
+    if observable_scale is not None:
+        scale = np.outer(observable_scale, observable_scale)
+        return covariance * scale, inverse / scale
+    return covariance, inverse
 
 
 def _split_paths(paths: list[Path], indices: dict[str, list[int]], split: str) -> list[Path]:
     return [paths[index] for index in indices[split]]
 
 
-def _stats(values: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _stats(values: np.ndarray, variance_epsilon=VARIANCE_EPS) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     mean = values.mean(axis=0)
     ddof = 1 if len(values) > 1 else 0
     variance = values.var(axis=0, ddof=ddof)
-    return mean, variance, np.log(variance + VARIANCE_EPS)
+    return mean, variance, np.log(variance + variance_epsilon)
 
 
-def _torch_stats(values: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+def _torch_stats(values: torch.Tensor, variance_epsilon=VARIANCE_EPS) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     mean = values.mean(dim=0)
     variance = values.var(dim=0, unbiased=values.shape[0] > 1)
-    return mean, variance, torch.log(variance + VARIANCE_EPS)
+    return mean, variance, torch.log(variance + variance_epsilon)
 
 
-def _loss_components(values: np.ndarray, target: np.ndarray, inverse_covariance: np.ndarray, variance_scale: np.ndarray | None = None) -> dict:
+def _loss_components(values: np.ndarray, target: np.ndarray, inverse_covariance: np.ndarray, variance_scale: np.ndarray | None = None, *, variance_epsilon=VARIANCE_EPS) -> dict:
     if variance_scale is None:
         variance_scale = np.ones(values.shape[1], dtype=np.float64)
-    mean, variance, log_variance = _stats(values)
-    target_mean, target_variance, target_log_variance = _stats(target)
+    mean, variance, log_variance = _stats(values, variance_epsilon)
+    target_mean, target_variance, target_log_variance = _stats(target, variance_epsilon)
     mean_difference = mean - target_mean
     mean_loss = float(mean_difference @ inverse_covariance @ mean_difference)
     variance_difference = (log_variance - target_log_variance) / variance_scale
@@ -268,10 +276,10 @@ def _loss_components(values: np.ndarray, target: np.ndarray, inverse_covariance:
     }
 
 
-def _metric_record(values: np.ndarray, target: np.ndarray, inverse_covariance: np.ndarray, variance_scale: np.ndarray | None = None) -> dict:
+def _metric_record(values: np.ndarray, target: np.ndarray, inverse_covariance: np.ndarray, variance_scale: np.ndarray | None = None, *, variance_epsilon=VARIANCE_EPS) -> dict:
     if variance_scale is None:
         variance_scale = np.ones(values.shape[1], dtype=np.float64)
-    record = _loss_components(values, target, inverse_covariance, variance_scale)
+    record = _loss_components(values, target, inverse_covariance, variance_scale, variance_epsilon=variance_epsilon)
     mean = record["mean"]
     target_mean = record["target_mean"]
     ddof = 1 if len(values) > 1 else 0
@@ -307,8 +315,8 @@ def distribution_acceptance(record: dict) -> dict[str, bool]:
     }
 
 
-def _loss_coefficients(values: torch.Tensor, target_mean: torch.Tensor, target_log_variance: torch.Tensor, inverse_covariance: torch.Tensor, variance_scale: torch.Tensor) -> tuple[torch.Tensor, dict[str, float]]:
-    mean, variance, log_variance = _torch_stats(values)
+def _loss_coefficients(values: torch.Tensor, target_mean: torch.Tensor, target_log_variance: torch.Tensor, inverse_covariance: torch.Tensor, variance_scale: torch.Tensor, *, variance_epsilon=VARIANCE_EPS) -> tuple[torch.Tensor, dict[str, float]]:
+    mean, variance, log_variance = _torch_stats(values, variance_epsilon)
     mean_difference = mean.double() - target_mean
     mean_loss = mean_difference @ inverse_covariance @ mean_difference
     variance_difference = (log_variance.double() - target_log_variance) / variance_scale
@@ -316,7 +324,7 @@ def _loss_coefficients(values: torch.Tensor, target_mean: torch.Tensor, target_l
     n = values.shape[0]
     mean_gradient = 2.0 * (inverse_covariance @ mean_difference) / n
     log_variance_gradient = 2.0 * variance_difference / variance_scale
-    variance_gradient = 2.0 * (values.double() - mean.double()) / ((n - 1) * (variance.double() + VARIANCE_EPS))
+    variance_gradient = 2.0 * (values.double() - mean.double()) / ((n - 1) * (variance.double() + variance_epsilon))
     coefficients = mean_gradient.unsqueeze(0) + log_variance_gradient.unsqueeze(0) * variance_gradient
     chi2 = mean_loss + variance_loss
     return coefficients, {
@@ -337,7 +345,7 @@ def _pyquda_gauge_from_links(links: np.ndarray, lattice: list[int]):
     return LatticeGauge(info, info.evenodd(links, True))
 
 
-def measure_reference_with_pyquda(paths: list[Path], lattice: list[int], resource_path: Path) -> np.ndarray:
+def measure_reference_with_pyquda(paths: list[Path], lattice: list[int], resource_path: Path, *, names=None) -> np.ndarray:
     """Measure the native coarse ensemble through PyQUDA's gauge routines."""
     from pyquda_utils import core, io
 
@@ -346,7 +354,7 @@ def measure_reference_with_pyquda(paths: list[Path], lattice: list[int], resourc
     measurements = []
     for path in paths:
         gauge = io.readNERSCGauge(str(path), checksum=True, plaquette=False, link_trace=False, reunitarize_sigma=0)
-        measurements.append(observable_vector_pyquda(gauge))
+        measurements.append(observable_vector_pyquda(gauge, names=names))
     return np.asarray(measurements, dtype=np.float64)
 
 
@@ -388,24 +396,25 @@ def measure_stout_with_pyquda(
 
 def measure_polynomial_with_pyquda(
     paths: list[Path], kernel: PolynomialStoutKernel, lattice: list[int], device: torch.device,
+    *, projection_device: str | None = None, names=None,
 ) -> tuple[np.ndarray, tuple[float, float]]:
     measurements = []
     max_unitarity = 0.0
     max_determinant = 0.0
     with torch.no_grad():
         for path, links in LinkPrefetcher(paths, device):
-            blocked = smear_and_block(links, kernel)
+            blocked = block_links(kernel(links, projection_device=projection_device))
             unitarity, determinant = su3_errors(blocked)
             max_unitarity = max(max_unitarity, unitarity)
             max_determinant = max(max_determinant, determinant)
             gauge = _pyquda_gauge_from_links(blocked.cpu().numpy(), lattice)
-            measurements.append(observable_vector_pyquda(gauge))
+            measurements.append(observable_vector_pyquda(gauge, names=names))
             del path, links, blocked, gauge
     return np.asarray(measurements), (max_unitarity, max_determinant)
 
 
 def measure_straight_blocked_with_pyquda(
-    paths: list[Path], lattice: list[int], device: torch.device,
+    paths: list[Path], lattice: list[int], device: torch.device, *, names=None,
 ) -> tuple[np.ndarray, tuple[float, float]]:
     """PyQUDA observables for the naive two-link blocking baseline."""
     measurements = []
@@ -418,7 +427,7 @@ def measure_straight_blocked_with_pyquda(
             max_unitarity = max(max_unitarity, unitarity)
             max_determinant = max(max_determinant, determinant)
             gauge = _pyquda_gauge_from_links(blocked.cpu().numpy(), lattice)
-            measurements.append(observable_vector_pyquda(gauge))
+            measurements.append(observable_vector_pyquda(gauge, names=names))
             del links, blocked, gauge
     return np.asarray(measurements), (max_unitarity, max_determinant)
 
@@ -457,13 +466,14 @@ def _distribution_bins(values: list[np.ndarray], minimum: int = 12, maximum: int
     return np.linspace(lower, upper, count + 1)
 
 
-def _plot_diagnostics(path: Path, history: list[dict], test: dict[str, np.ndarray], names: tuple[str, ...]) -> None:
+def _plot_diagnostics(path: Path, history: list[dict], test: dict[str, np.ndarray], names: tuple[str, ...], *, training_names=None) -> None:
     root = Path(__file__).resolve().parents[3]
     sys.path.insert(0, str(root / "scripts" / "heatbath"))
     from plot_settings import BLUE, FIG_SIZE, GREY, ORANGE, apply_plot_style
 
     apply_plot_style()
-    figure, axes = plt.subplots(2, 3, figsize=(FIG_SIZE[0] * 2.2, FIG_SIZE[1] * 2.0))
+    rows = (len(names) + 3) // 3
+    figure, axes = plt.subplots(rows, 3, figsize=(FIG_SIZE[0] * 2.2, FIG_SIZE[1] * rows), squeeze=False)
     epochs = [row["epoch"] for row in history]
     axes[0, 0].plot(epochs, [row["train_loss"] for row in history], color=BLUE, label="train")
     if any(np.isfinite(row["validation_loss"]) for row in history):
@@ -486,7 +496,7 @@ def _plot_diagnostics(path: Path, history: list[dict], test: dict[str, np.ndarra
         axis.axvspan(downsampled_mean - downsampled_error, downsampled_mean + downsampled_error, color=ORANGE, alpha=0.12, linewidth=0)
         axis.axvline(reference_mean, color=BLUE, linestyle=":")
         axis.axvline(downsampled_mean, color=ORANGE, linestyle=":")
-        axis.set_title(name)
+        axis.set_title(name + (" (held out)" if training_names is not None and name not in training_names else ""))
         axis.grid(linestyle=":")
         axis.legend(frameon=False, fontsize=8)
     figure.tight_layout()

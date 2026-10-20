@@ -1,9 +1,89 @@
 {
-  "best_offsets": [],
-  "best_validation_loss": null,
-  "bound": 0.0,
-  "evaluations": 0,
-  "message": "Flow 1 frozen at stable warm start",
-  "optimizer": "frozen",
-  "parameters": 0
+  "baseline_checkpoint": "e8cb44d7de4a",
+  "best_offsets": [
+    -0.11119453235339631,
+    0.12155039642583026,
+    0.3707685198780591,
+    -0.10737303928115238,
+    0.10852952265000719,
+    1.1454625069899738
+  ],
+  "best_validation_loss": 573364.8806750989,
+  "bound": 1.5,
+  "elapsed_seconds": 3951.2558539190795,
+  "evaluations": 5,
+  "held_out_observables": [
+    "rectangle_1x3",
+    "square_2x2"
+  ],
+  "initial_offsets": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "mean_metric": "diagonal",
+  "message": "Stopped because `callback` function raised `StopIteration` or returned `True`",
+  "minutes_budget": 65.0,
+  "observable_names": [
+    "plaquette",
+    "rectangle_1x2",
+    "rectangle_1x3",
+    "square_2x2",
+    "rectangle_2x3",
+    "square_3x3",
+    "polyakov_abs2",
+    "polyakov_abs4"
+  ],
+  "optimizer": "bounded least_squares",
+  "optimizer_converged": false,
+  "optimizer_status": -2,
+  "patience": 6,
+  "require_stable_inverse": true,
+  "seed": 1234,
+  "stopping_reason": "time budget",
+  "terminal_offsets": [
+    -0.37829334310495866,
+    0.4140499916977853,
+    0.13535587322692538,
+    -0.54668133359976,
+    0.5473021172157537,
+    0.8764439994328563
+  ],
+  "test_targets_used": false,
+  "train_ids": [
+    0,
+    1,
+    2,
+    5,
+    6,
+    7,
+    10,
+    11,
+    12,
+    15,
+    16,
+    17
+  ],
+  "training_observables": [
+    "plaquette",
+    "rectangle_1x2",
+    "rectangle_2x3",
+    "square_3x3",
+    "polyakov_abs2",
+    "polyakov_abs4"
+  ],
+  "validation_ids": [
+    3,
+    8,
+    13,
+    18,
+    23,
+    28,
+    33,
+    38
+  ],
+  "variance_weight": 10.0
 }

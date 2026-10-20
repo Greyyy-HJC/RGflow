@@ -1,0 +1,12 @@
+{
+  "scripts/downsample/fit_polynomial.py": "7a56f148886cd830011eaa3cf65ead45f20e9251be204ef75f8e03123a65b3f9",
+  "scripts/heatbath/generate.py": "00f2246efeab047be2d4128ac7c44178fe1b890b548f7d0c63706bd7d2873df2",
+  "scripts/heatbath/heatbath_bridge.cpp": "b96920a54b51bb293727a532cbb7298445c34c51936c86e8d1b8dce3e5d69abe",
+  "scripts/heatbath/static_potential.py": "aab35ed27b106884dbfe830e58ad133dcfb0b8f9b9057410f93881eed971e380",
+  "src/rgflow/su3/downsampling.py": "02b6d5a21b798bfaadc5396fe63e02fa327719bf9d16acc08da4042ad7475901",
+  "src/rgflow/su3/training.py": "9df531b8726604519372f5f3dfaa58a81858fa19777e1b658a6ffd83ac270d06",
+  "src/rgflow/su3/observables.py": "ac73d9ae11c8ac49c18b835e3765a832496ada2579895c837e2c197f407abd34",
+  "src/rgflow/su3/linalg.py": "3ced011955f88df20081f744e134a38cad03b277a58ec5ea3c10136b910be43e",
+  "src/rgflow/su3/perfect_blocking.py": "f641c082066c0a25bdf00f78e81ea3480a47babd8f39c138eb5d51ae977d6e65",
+  "scripts/downsample/evaluate.py": "399ae4d37000a05917d2a269351fbe8ca9ac54ee8b81a994060e151869bd1534"
+}

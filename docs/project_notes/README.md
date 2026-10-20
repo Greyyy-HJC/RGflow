@@ -1,5 +1,20 @@
 # Progress note: build and reproduce
 
+The selected downsampling run and coarse reference are recorded in
+`results/selected_downsampling_run.json`. The current reference is
+`L12_beta5p775`, with spacing ratio `1.9940(249)` from 300 configurations.
+The figure builder and result updater read this selection. The two-flow
+upsampling results retain their original checkpoint and previous frozen smoother;
+they are explicitly identified as an earlier experiment in the note.
+
+The eight-operator downsampling experiment fits W11, W12, W23, W33,
+Polyakov |P|² and |P|⁴ from a fresh perturbative initialization. W13 and W22
+are held out from fitting and model selection. Its 2×4 figure and result
+table label those two operators explicitly. Training, unseen-operator and
+all-operator distribution checks are reported separately. The fourth
+moment averages directional |P_mu|⁴ after spatial averaging; its numerical
+variance floor is relative to its own target-training variance.
+
 `jinchen_progress.tex` is an English REVTeX note, with a compact title and no
 abstract or separate title page. Its figures are vector PDF files in `figs/`.
 The scientific text describes the algorithms independently of source filenames.

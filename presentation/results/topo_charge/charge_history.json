@@ -1,0 +1,22 @@
+{
+  "flow_time_t_over_a_squared": 5.0,
+  "charge_operator": "unrounded clover Q, same Wilson flow as the charge-evolution figures",
+  "reference": {
+    "measurements": "full/measurements.npz",
+    "configurations": 300,
+    "steps_between_points_within_stream": 100,
+    "heatbath_sweeps_per_step": 1,
+    "overrelaxation_sweeps_per_step": 4,
+    "independent_hot_start_config_ids": [
+      50
+    ]
+  },
+  "hmc": {
+    "measurements": "hmc/flow/measurements.npz",
+    "measured_snapshots": 30,
+    "trajectories_between_points": 10,
+    "md_steps_per_trajectory": 50,
+    "trajectory_length": 1.0,
+    "trajectory_zero": "reference configuration ID 299 at the same flow time"
+  }
+}

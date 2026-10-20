@@ -121,7 +121,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    beta_tag = f"{args.beta:.2f}".replace(".", "p")
+    beta_string = f"{args.beta:.6f}".rstrip("0")
+    beta_tag = beta_string.ljust(beta_string.index(".") + 3, "0").replace(".", "p")
     output = (args.output or DEFAULT_OUTPUT_ROOT / f"L{args.lattice_size}_beta{beta_tag}").resolve()
     output.mkdir(parents=True, exist_ok=True)
     manifest_path = output / "ensemble.json"

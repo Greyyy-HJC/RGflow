@@ -17,7 +17,7 @@ from plot_settings import BLUE, FIG_WIDTH, GREEN, RED, VIOLET, apply_plot_style
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ROOT = ROOT / "artifacts" / "4dsu3"
-ENSEMBLES = ("L12_beta5p80", "L16_beta5p95", "L24_beta6p20")
+ENSEMBLES = ("L12_beta5p775", "L16_beta5p95", "L24_beta6p20")
 COLORS = (GREEN, BLUE, RED)
 
 
@@ -72,7 +72,7 @@ def plot_ensemble(root: Path, name: str, color: str, max_lag: int, dpi: int, out
     steps = np.asarray([record["step"] for record in manifest["configurations"]])
     acf = autocorrelation(values, max_lag)
     separation = manifest["separation_steps"]
-    label = rf"$L={manifest['lattice_size'][0]},\ \beta={manifest['beta']:.2f}$"
+    label = rf"$L={manifest['lattice_size'][0]},\ \beta={manifest['beta']:g}$"
     summaries = {"plaquette": observable_summary(values, acf, separation, "plaquette")}
 
     wilson_path = directory / "static_potential.npz"

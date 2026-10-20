@@ -14,7 +14,7 @@ from rgflow.su3.downsampling import block_links, su3_errors
 
 ROOT = Path(__file__).resolve().parents[2]
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--run', type=Path, default=ROOT/'artifacts/4dsu3/upsample/L12_to_L24_2flow_equivariant_v2')
+parser.add_argument('--run', type=Path, default=ROOT/'artifacts/4dsu3/upsample/L12_to_L24_2flow_v6_8ops_6train')
 parser.add_argument('--full-lattice-sample', type=Path, help='check synchronized-noise generation on its coarse field')
 args = parser.parse_args()
 torch.set_num_threads(2)

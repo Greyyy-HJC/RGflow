@@ -100,7 +100,7 @@ thresholds are recorded directly; beating the old baseline is insufficient.
 This verifies the selected observables, not equality of the complete
 gauge-field measures.
 
-## Local polynomial refinement
+## Previous local polynomial refinement at beta 5.80
 
 Run `L24_beta6p20_to_L12_beta5p80_polynomial_local_ls_v2` refines the
 hook-polynomial checkpoint with four local coefficients, using 60 fixed
@@ -125,3 +125,96 @@ All test means are within one target sigma, but plaquette and Polyakov
 widths fail the 20% criterion. Thus `distribution_match` is false.
 The stricter combined-standard-error check also fails; the four mean
 shifts in those units are approximately `(1.004, 1.554, 1.632, -0.632)`.
+
+
+## Scale-matched coarse reference at beta 5.775
+
+The active L12 reference now contains 300 fresh configurations at beta 5.775,
+using the same 50/250 hot-start seed streams, 1000 warmup steps and 100-step
+separation. The same static-potential protocol measures
+`a_c = 0.144038(1749) fm` and `a_c/a_f = 1.9940(249)`, with target
+`2a_f = 0.144470 fm`. The original beta 5.80 reference remains archived.
+The three trial ensembles and the initial Necco–Sommer relative-scale estimate
+are recorded in `docs/project_notes/results/selected_downsampling_run.json`.
+
+Run `L24_beta6p20_to_L12_beta5p775_polynomial_local_ls_v3` starts from the
+previous local-polynomial checkpoint and refits the same fixed 60 training
+configurations against all 180 new coarse training targets. Forty objective
+evaluations reduce the training objective from 1222.66 to 5.68758; the solver
+stops at its evaluation limit. Independent CPU configurations run concurrently
+with `--workers 4`. Their observables and analytic Jacobians agree with CUDA
+to about `4.2e-7` on a physical L24 field. Serial/parallel equality and an
+independent finite-difference Jacobian check are included in the tests.
+
+The frozen checkpoint is evaluated on all 300 fine configurations, using the
+exact retained polynomial basis and the original 180/60/60 partition. Targets
+are remeasured with PyQUDA from the new coarse ensemble. The cached naive
+baseline depends only on the unchanged fine ensemble; its source hashes and
+measurements have been checked against the original baseline run.
+
+| observable | mean shift / target sigma | std ratio |
+| --- | ---: | ---: |
+| plaquette | -0.199 | 1.223 |
+| rectangle_1x2 | -0.083 | 1.127 |
+| square_2x2 | -0.062 | 1.014 |
+| polyakov_abs2 | -0.097 | 0.750 |
+
+All four held-out means pass both the one-target-sigma criterion and the
+stricter actual combined-standard-error criterion. Plaquette and Polyakov
+widths fail the 20% window, so `distribution_match` remains false. This is
+an operator-distribution check rather than a proof of equality of gauge-field
+measures. Full-map PyQUDA measurements on test indices 4, 9 and 14 agree
+with the retained-basis values to `1.04e-7` in the largest absolute observable
+difference. Generated links have maximum unitarity/determinant errors of
+about `2.4e-6` and `2.6e-6` on those three configurations.
+
+`presentation/downsample_stout.ipynb` and the selected progress-note bundle
+show this new result. Upsampling measurements retain their previous frozen
+smoother and are identified as an archived experiment.
+
+
+## Eight-operator experiment with two unseen operators
+
+The `polynomial_local_ls_v4_8ops_6train` experiment restarts from the grid-8
+perturbative polynomial, with all hook and local coefficients initially zero.
+It fits W11, W12, W23, W33, Polyakov |P|² and |P|⁴. W13 and W22 are evaluated
+only after freezing. The fourth moment is `(1/4) sum_mu |P_mu|^4`, with each
+P_mu the spatially averaged normalized trace in that direction.
+
+The unchanged 180/60/60 partition uses the same fixed 60 fine training fields
+(seed 1234) and all 180 native coarse training targets. Trust-region least
+squares uses twelve residuals and eleven parameters, with a 100-evaluation
+limit and early convergence at the existing tolerances. The per-channel
+variance floor is `1e-12 * target_training_variance`, including in the analytic
+Jacobian. Covariance regularization operates in target-standard-deviation
+units; raw measured values are saved without rescaling.
+
+All 300 native targets and naive-blocking samples are measured for the
+extended set, with names saved in the caches. No four-channel baseline or
+old fitted parameters enter this experiment. The shared measurement API's
+unnamed default remains the legacy four-channel set. Eight-channel test
+figures mark W13 and W22 as held out, and summarize matching separately for
+training, held-out, and all operators. Older four-channel aggregate losses
+are not compared numerically to this experiment.
+
+
+The eight-operator run completes 100 evaluations: training objective 400572 → 47.6273. It reaches the evaluation budget without declaring convergence.
+
+| observable | role | mean / target sigma | mean / combined SE | std ratio |
+| --- | --- | ---: | ---: | ---: |
+| W11 | training | -0.235 | -1.220 | 1.110 |
+| W12 | training | -0.270 | -1.510 | 0.959 |
+| W13 | held out | 0.753 | 4.222 | 0.954 |
+| W22 | held out | -1.894 | -11.311 | 0.826 |
+| W23 | training | -0.467 | -2.707 | 0.889 |
+| W33 | training | 0.778 | 4.409 | 0.932 |
+| \|P\|² | training | 0.020 | 0.113 | 0.899 |
+| \|P\|⁴ | training | -0.041 | -0.251 | 0.764 |
+
+training: distribution_match = False.
+
+held_out: distribution_match = False.
+
+all: distribution_match = False.
+
+Full-map PyQUDA cross-check on three held-out configurations: max absolute observable difference 4.83e-08.

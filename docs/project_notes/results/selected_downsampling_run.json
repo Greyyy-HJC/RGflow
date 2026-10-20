@@ -1,0 +1,96 @@
+{
+  "run": "L24_beta6p20_to_L12_beta5p775_polynomial_local_ls_v4_8ops_6train",
+  "coarse_ensemble": "L12_beta5p775",
+  "beta": 5.775,
+  "previous_run": "L24_beta6p20_to_L12_beta5p775_polynomial_local_ls_v3",
+  "previous_coarse_ensemble": "L12_beta5p775",
+  "target_a_fm": 0.14447007078475527,
+  "target_a_fm_error": 0.00043499659474433385,
+  "selected_scale": {
+    "ensemble": "L12_beta5p775",
+    "beta": 5.775,
+    "configurations": 300,
+    "a_fm": 0.1440384454683109,
+    "a_fm_error": 0.0017486206038451729,
+    "ratio": 1.9940247095595678,
+    "ratio_error": 0.024940823332044268
+  },
+  "candidates": [
+    {
+      "ensemble": "L12_beta5p80",
+      "beta": 5.8,
+      "configurations": 300,
+      "a_fm": 0.13731234396521375,
+      "a_fm_error": 0.0016076073391778477,
+      "ratio": 1.9009105930292545,
+      "ratio_error": 0.022979445716711806
+    },
+    {
+      "ensemble": "L12_beta5p78",
+      "beta": 5.78,
+      "configurations": 300,
+      "a_fm": 0.13990372623412842,
+      "a_fm_error": 0.002093160760172738,
+      "ratio": 1.936784906024858,
+      "ratio_error": 0.029558066066768224
+    },
+    {
+      "ensemble": "L12_beta5p77",
+      "beta": 5.77,
+      "configurations": 300,
+      "a_fm": 0.1467730600383218,
+      "a_fm_error": 0.0018607355954696056,
+      "ratio": 2.031881887245667,
+      "ratio_error": 0.02647601261144038
+    },
+    {
+      "ensemble": "L12_beta5p775",
+      "beta": 5.775,
+      "configurations": 300,
+      "a_fm": 0.1440384454683109,
+      "a_fm_error": 0.0017486206038451729,
+      "ratio": 1.9940247095595678,
+      "ratio_error": 0.024940823332044268
+    }
+  ],
+  "initial_estimate": {
+    "beta": 5.77609380877476,
+    "method": "Necco-Sommer relative scaling anchored to measured beta=5.80 spacing; direct static-potential measurements select the ensemble",
+    "source": "https://arxiv.org/pdf/hep-lat/0108008",
+    "equation": "2.6"
+  },
+  "seed_streams": [
+    {
+      "seed": 1234,
+      "configurations": 50
+    },
+    {
+      "seed": 1235,
+      "configurations": 250
+    }
+  ],
+  "observables": [
+    "plaquette",
+    "rectangle_1x2",
+    "rectangle_1x3",
+    "square_2x2",
+    "rectangle_2x3",
+    "square_3x3",
+    "polyakov_abs2",
+    "polyakov_abs4"
+  ],
+  "training_observables": [
+    "plaquette",
+    "rectangle_1x2",
+    "rectangle_2x3",
+    "square_3x3",
+    "polyakov_abs2",
+    "polyakov_abs4"
+  ],
+  "held_out_observables": [
+    "rectangle_1x3",
+    "square_2x2"
+  ],
+  "initialization": "fresh perturbative, zero hook/local coefficients",
+  "max_nfev": 100
+}

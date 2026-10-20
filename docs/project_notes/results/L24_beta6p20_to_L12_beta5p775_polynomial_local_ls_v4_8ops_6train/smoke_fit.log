@@ -1,0 +1,83 @@
+Measuring 10 native coarse configurations at beta=5.775
+PyQUDA INFO: Using default grid mapping
+PyQUDA INFO: Using lattice size [12, 12, 12, 12] to determine grid size
+PyQUDA INFO: Using grid size [1, 1, 1, 1]
+PyQUDA INFO: Using numpy with cpu as Array API
+PyQUDA INFO: Using QUDA_RESOURCE_PATH=/home/jinchen/git/fnal/RGflow/temp/8ops_smoke_data/coarse/.quda-cache
+Disabling GPU-Direct RDMA access
+Enabling peer-to-peer copy engine and direct load/store access
+QUDA 1.1.0 (git 1.1.0-f4af6b974-sm_86)
+CUDA Driver version = 13020
+CUDA Runtime version = 12000
+Graphic driver version = 595.91.07
+Found device 0: NVIDIA GeForce RTX 3060
+Using device 0: NVIDIA GeForce RTX 3060
+Initializing monitoring on device 0 with pciBusId 0000:07:00.0: NVIDIA GeForce RTX 3060
+WARNING: Data reordering done on GPU (set with QUDA_REORDER_LOCATION=GPU/CPU)
+WARNING: Cache file not found.  All kernels will be re-tuned (if tuning is enabled).
+WARNING: Using device memory pool allocator
+WARNING: Using pinned memory pool allocator
+cublasCreated successfully
+Saving 8 sets of cached parameters to /home/jinchen/git/fnal/RGflow/temp/8ops_smoke_data/coarse/.quda-cache/tunecache.tsv
+Saving 11 sets of cached parameters to /home/jinchen/git/fnal/RGflow/temp/8ops_smoke_data/coarse/.quda-cache/tunecache.tsv
+Saving 12 sets of cached parameters to /home/jinchen/git/fnal/RGflow/temp/8ops_smoke_data/coarse/.quda-cache/tunecache.tsv
+Saving 15 sets of cached parameters to /home/jinchen/git/fnal/RGflow/temp/8ops_smoke_data/coarse/.quda-cache/tunecache.tsv
+Saving 16 sets of cached parameters to /home/jinchen/git/fnal/RGflow/temp/8ops_smoke_data/coarse/.quda-cache/tunecache.tsv
+Saving 18 sets of cached parameters to /home/jinchen/git/fnal/RGflow/temp/8ops_smoke_data/coarse/.quda-cache/tunecache.tsv
+WARNING: Unexpected regression when tuning candidates for cudaMemcpyHostToDevice: (5.98599e-05 > 1.1 * 6.656e-06)
+Saving 19 sets of cached parameters to /home/jinchen/git/fnal/RGflow/temp/8ops_smoke_data/coarse/.quda-cache/tunecache.tsv
+Saving 20 sets of cached parameters to /home/jinchen/git/fnal/RGflow/temp/8ops_smoke_data/coarse/.quda-cache/tunecache.tsv
+initial coefficients=[0.021349080357132955, -0.01908027157063272, -0.002500323423535852, -0.0001571102982509985, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], perturbative residual=0.018837433930911925
+fit 001: loss=26752.6, mean z=[-107.135 -113.2    -44.215  -21.677   -0.118   -0.374], 23.4s
+Frozen checkpoint: The maximum number of function evaluations is exceeded.
+evaluated 10/10 configurations (all eight operators)
+Cross-checking three held-out configurations with full-map PyQUDA
+Complete: {"training": {"test_all_means_within_one_standard_error": false, "test_all_means_within_one_target_sigma": false, "test_all_std_ratios_within_20_percent": false, "distribution_match": false}, "held_out": {"test_all_means_within_one_standard_error": false, "test_all_means_within_one_target_sigma": false, "test_all_std_ratios_within_20_percent": false, "distribution_match": false}, "all": {"test_all_means_within_one_standard_error": false, "test_all_means_within_one_target_sigma": false, "test_all_std_ratios_within_20_percent": false, "distribution_match": false}}
+WARNING: Environment variable QUDA_PROFILE_OUTPUT_BASE not set; writing to profile.tsv and profile_async.tsv
+Saving 18 sets of cached parameters to /home/jinchen/git/fnal/RGflow/temp/8ops_smoke_data/coarse/.quda-cache/profile_0.tsv
+Saving 0 sets of cached profiles to /home/jinchen/git/fnal/RGflow/temp/8ops_smoke_data/coarse/.quda-cache/profile_async_0.tsv
+
+               initQuda Total time =     0.140 secs
+                     init     =     0.140 secs ( 99.991%),	 with        2 calls at 7.015e+04 us per call
+        total accounted       =     0.140 secs ( 99.991%)
+        total missing         =     0.000 secs (  0.009%)
+
+          loadGaugeQuda Total time =     0.421 secs
+                 download     =     0.380 secs ( 90.096%),	 with      120 calls at 3.164e+03 us per call
+                     init     =     0.001 secs (  0.164%),	 with     1199 calls at 5.755e-01 us per call
+                  compute     =     0.000 secs (  0.007%),	 with      120 calls at 2.583e-01 us per call
+                    comms     =     0.015 secs (  3.459%),	 with      119 calls at 1.225e+02 us per call
+                     free     =     0.000 secs (  0.014%),	 with      119 calls at 5.126e-01 us per call
+        total accounted       =     0.395 secs ( 93.740%)
+        total missing         =     0.026 secs (  6.260%)
+
+   gaugeObservablesQuda Total time =    20.015 secs
+                     init     =     0.000 secs (  0.002%),	 with        1 calls at 3.280e+02 us per call
+                  compute     =    19.952 secs ( 99.683%),	 with      120 calls at 1.663e+05 us per call
+                    comms     =     0.000 secs (  0.000%),	 with        1 calls at 7.700e+01 us per call
+        total accounted       =    19.953 secs ( 99.685%)
+        total missing         =     0.063 secs (  0.315%)
+
+                endQuda Total time =     0.005 secs
+                     free     =     0.000 secs (  0.039%),	 with        1 calls at 2.000e+00 us per call
+        total accounted       =     0.000 secs (  0.039%)
+        total missing         =     0.005 secs ( 99.961%)
+
+       initQuda-endQuda Total time =   352.925 secs
+
+                   QUDA Total time =    20.582 secs
+                 download     =     0.380 secs (  1.845%),	 with      120 calls at 3.164e+03 us per call
+                     init     =     0.141 secs (  0.687%),	 with     1202 calls at 1.176e+02 us per call
+                  compute     =    19.952 secs ( 96.938%),	 with      240 calls at 8.313e+04 us per call
+                    comms     =     0.015 secs (  0.071%),	 with      120 calls at 1.220e+02 us per call
+                     free     =     0.000 secs (  0.000%),	 with      120 calls at 4.333e-01 us per call
+        total accounted       =    20.488 secs ( 99.541%)
+        total missing         =     0.094 secs (  0.459%)
+
+Device memory used = 38.9 MiB
+Pinned device memory used = 0.0 MiB
+Managed memory used = 0.0 MiB
+Shmem memory used = 0.0 MiB
+Page-locked host memory used = 3.8 MiB
+Total host memory used >= 3.8 MiB
+

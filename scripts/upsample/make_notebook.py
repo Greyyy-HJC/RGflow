@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Build and execute the two-flow presentation using saved held-out results."""
+"""Replace the two-flow presentation with the current eight-operator experiment."""
 
 import argparse
-import json
-import shutil
 from pathlib import Path
+import shutil
 
 import nbformat as nbf
 from nbclient import NotebookClient
@@ -12,356 +11,261 @@ from jupyter_client import KernelManager
 
 ROOT = Path(__file__).resolve().parents[2]
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--run", type=Path, default=ROOT / "artifacts/4dsu3/upsample/L12_to_L24_2flow_equivariant_v2")
+parser.add_argument('--run', type=Path,
+                    default=ROOT/'artifacts/4dsu3/upsample/L12_to_L24_2flow_v6_8ops_6train')
 args = parser.parse_args()
-run_metadata = json.loads((args.run/'run.json').read_text())
-bundle = ROOT / "presentation/results/upsampling_2flow"
-bundle.mkdir(parents=True, exist_ok=True)
-for name in ["observable_distributions.npz", "metrics.json", "history.json", "run.json", "flows.pt"]:
-    shutil.copy2(args.run / name, bundle / name)
-for name in ['numerics.json', 'training_arguments.json', 'training_invocations.json', 'offload_validation.json']:
-    if (args.run/name).exists():
-        shutil.copy2(args.run/name, bundle/name)
-if (args.run/'execution_notes.json').exists():
-    shutil.copy2(args.run/'execution_notes.json', bundle/'execution_notes.json')
-for name in ['calibration_stage1.json', 'calibration_stage2.json']:
-    if (args.run/name).exists():
-        shutil.copy2(args.run/name, bundle/name)
-        metadata = json.loads((args.run/name).read_text())
-        if 'baseline_checkpoint' in metadata:
-            baselines = bundle/'calibration_baselines'
-            baselines.mkdir(exist_ok=True)
-            checkpoint = metadata['baseline_checkpoint']+'.pt'
-            shutil.copy2(args.run/'calibration_baselines'/checkpoint, baselines/checkpoint)
+required = ['observable_distributions.npz', 'metrics.json', 'history.json', 'run.json',
+            'flows.pt', 'numerics.json', 'execution_notes.json', 'training_arguments.json',
+            'training_invocations.json', 'calibration_stage1.json', 'calibration_stage2.json',
+            'cache_metadata.json', 'source_hashes.json', 'promotion.json']
+for name in required:
+    if not (args.run/name).exists():
+        raise FileNotFoundError(args.run/name)
+bundle = ROOT/'presentation/results/upsampling_2flow'
+if bundle.exists():
+    shutil.rmtree(bundle)
+bundle.mkdir(parents=True)
+for name in required:
+    shutil.copy2(args.run/name, bundle/name)
 
 notebook = nbf.v4.new_notebook()
-notebook.metadata.kernelspec = {"display_name": "Python (RGflow .venv)", "language": "python", "name": "python3"}
+notebook.metadata.kernelspec = {'display_name': 'Python (RGflow .venv)', 'language': 'python', 'name': 'python3'}
 notebook.cells = [
-    nbf.v4.new_markdown_cell(r"""# SU(3) upsampling with two normalizing flows
+nbf.v4.new_markdown_cell(r'''# SU(3) upsampling with two normalizing flows
 
-**L12 → L24 · βfine = 6.20 · no rethermalization**
+**L12 → L24 · βfine = 6.20 · βcoarse = 5.775 · six training operators, eight evaluation operators**
 
-The input ensemble is the held-out **downsampled fine ensemble**, using the
-frozen `polynomial_local_ls_v2` smoothing checkpoint. The L24 reference was
-generated with QUDA heatbath + overrelaxation. Training, validation and test
-IDs follow the existing downsampling split; no test operators enter training.
+Use the frozen **v4_8ops_6train** downsampling checkpoint fitted against the
+lattice-spacing-matched L12 ensemble. The input here is the held-out
+**downsampled fine ensemble**, $C=B(S(U))$. The native coarse ensemble fixes
+the downsampling target; direct generation from native L12 inputs is a separate experiment.
+No heatbath or HMC updates are applied to either flow output.
 
-| Step | Operation | Degrees of freedom per coarse cell |
+| Stage | Operation | Degrees of freedom per coarse cell |
 | --- | --- | --- |
-| Input | $C=B(S(U))$ | 4 SU(3) links |
+| Input | $C=B(S(U))$ | four SU(3) links |
 | Flow 1 | $\widetilde S=F_1(C,z)$, conditional Haar details | 60 free links; four two-link products fixed |
-| Flow 2 | $\widetilde U=F_2(\widetilde S)$ | invertible transport of all 64 links |
-| Check | operators on $\widetilde U$ vs heatbath $U$ | held-out distribution comparison |
+| Flow 2 | $\widetilde U=F_2(\widetilde S)$ | transport of all 64 links |
 
-[Hasenfratz et al., arXiv:2608.28581](https://arxiv.org/abs/2608.28581), Eq. (11),
-motivates conditional likelihood training for the missing details. That paper
-uses an invertible scalar smoothing kernel. This repository's “stout” map is
-actually a polynomial/path smoother **followed by SU(3) polar projection**;
-we do not assume it has a global inverse. Flow 2 learns a transport of its
-distribution, rather than an exact inverse of the smoothing operation.
-"""),
-    nbf.v4.new_code_cell("""from pathlib import Path
-import json, os
+Train on $W_{11},W_{12},W_{23},W_{33},\lvert P\rvert^2,\lvert P\rvert^4$.
+**$W_{13}$ and $W_{22}$ are evaluation-only** and enter neither moment fitting
+nor validation selection. The fourth Polyakov moment is
+$\frac14\sum_\mu\lvert P_\mu\rvert^4$, after the transverse average in each direction.
+Training, validation and test sources retain the downsampling 180/60/60 split.
+'''),
+nbf.v4.new_code_cell('''from pathlib import Path
+import json
 import numpy as np
 import matplotlib.pyplot as plt
 from IPython.display import display, Markdown
 
-ROOT = Path.cwd()
-if not (ROOT / 'src').is_dir():
-    ROOT = ROOT.parent
-RUN = Path(os.environ.get('RGFLOW_UPSAMPLE_RUN', ROOT / 'presentation/results/upsampling_2flow'))
-data = np.load(RUN / 'observable_distributions.npz')
-metrics = json.loads((RUN / 'metrics.json').read_text())
-run = json.loads((RUN / 'run.json').read_text())
-history = json.loads((RUN / 'history.json').read_text())
+ROOT = next(p for p in (Path.cwd(), Path.cwd().parent) if (p/'pyproject.toml').exists())
+RUN = ROOT/'presentation/results/upsampling_2flow'
+data = np.load(RUN/'observable_distributions.npz')
+metrics = json.loads((RUN/'metrics.json').read_text())
+run = json.loads((RUN/'run.json').read_text())
+history = json.loads((RUN/'history.json').read_text())
+notes = json.loads((RUN/'execution_notes.json').read_text())
 names = metrics['observable_names']
+held_out = metrics['held_out_observables']
+labels = [r'$W_{11}$', r'$W_{12}$', r'$W_{13}$', r'$W_{22}$', r'$W_{23}$', r'$W_{33}$',
+          r'$|P|^2$', r'$|P|^4$']
+np.testing.assert_array_equal(data['observable_names'], names)
 plt.rcParams.update({'figure.dpi': 125, 'axes.grid': True, 'grid.alpha': .15})
-print(f"{len(run['train_indices'])} training / {len(run['validation_indices'])} validation / {len(run['test_indices'])} test configurations")
+print('Downsampling run:', Path(run['arguments']['downsampling_run']).name)
+print('Downsampling checkpoint:', run['downsampling_checkpoint_sha256'])
+print('Two-flow checkpoint:', run['checkpoint_sha256'])
+print(f"{len(run['train_indices'])} training / {len(run['validation_indices'])} validation / {len(run['test_indices'])} test sources")
+print('Training IDs:', run['train_indices'])
+print('Validation IDs:', run['validation_indices'])
 print('Test IDs:', data['test_indices'].tolist())
+print('Training operators:', metrics['training_observables'])
+print('Held-out operators:', held_out)
 print('Flow sweeps:', run['arguments']['sweeps'], '+', run['arguments']['fine_sweeps'])
-print('Source:', metrics['source'])
+print('Initialization:', notes['initialization'])
 print('Rethermalization sweeps:', metrics['rethermalization_sweeps'])
 m = metrics['flow2_fine']
-display(Markdown(f"**Prototype outcome:** one-target-σ mean criterion **{'PASS' if m['acceptance']['test_all_means_within_one_target_sigma'] else 'FAIL'}**; full distribution check **{'PASS' if m['acceptance']['distribution_match'] else 'FAIL'}**. Width ratios: " + ', '.join(f'{x:.2f}' for x in m['std_ratio']) + '.'))
-display(Markdown('The four-operator criteria test the measured distributions; they do not establish equality of the full heatbath measure. Intermediate and teacher-input diagnostics are shown below.'))
-"""),
-    nbf.v4.new_markdown_cell(r"""## Invertible group couplings
+passed = ((np.abs(m['mean_shift_in_target_sigma']) <= 1)
+          & (np.abs(np.asarray(m['std_ratio'])-1) <= .2))
+display(Markdown(f"**Final Flow-2 test outcome: {'PASS' if m['acceptance']['distribution_match'] else 'FAIL'}**; "
+                 f"{passed.sum()}/{len(names)} individual operators pass both mean and width criteria. "
+                 "The two unseen operators are marked in every distribution figure."))
+'''),
+nbf.v4.new_markdown_cell(r'''## Fresh training and stage-wise calibration
 
-Each flow uses alternating site checkerboards, link directions and the three
-embedded SU(2) subgroups in a **covariant local frame**. Diagonalize the
-inactive-staple matrix $CC^\dagger=F\Lambda F^\dagger$, and project
-$F^\dagger UC^\dagger F$ (with $C$ the frozen staple sum)
-onto its quaternion part $r=|r|q$. A small neural network takes $|r|$,
-frozen nearest/transverse-distance-three staple norms and overlap, and the four fine-site
-parity bits. These features are unchanged by the active SU(2) rotation.
-The predicted scale $s$ transforms the SU(2) fibre by
+Both covariant SU(3) maps start from seed 1234 with fresh neural weights.
+The warm-up uses single precision: Flow 1 trains its exact conditional Haar
+likelihood for four epochs on 12 training sources, and Flow 2 trains paired
+link transport for three epochs. Both parameter sets are then promoted to
+double precision without changing their values. Flow 1's six shared offsets
+(scale, cubic shape and long-staple weight in each half) are fitted to six
+means and six log variances. After freezing Flow 1, Flow 2 fits its own six
+offsets on **generated Flow-1 inputs**.
 
-$$\tan(\theta'/2)=e^s\tan(\theta/2),\qquad
-\log J=3\left[s+\log2-\log\big((1+q_0)+e^{2s}(1-q_0)\big)\right].$$
+Each calibration uses fixed, independent training and validation latent draws,
+12 training sources and eight validation sources. Means use per-target standard
+deviations; log variances use the relative floor $10^{-12}s_{\mathrm{target},j}^2$.
+The log-variance squared residual has weight 10. Best stable validation loss
+selects the checkpoint, with at most 30 objective evaluations, 65 minutes and
+six evaluations of validation patience per stage. The actual stopping reasons
+are printed below. No test targets enter training or selection.
 
-After this shift, a second predicted parameter sets $\alpha=.45\tanh h$ and
-deforms $u=q_0$ by $g(u)=u+\alpha u(1-u^2)$. The other quaternion components
-are rescaled by $\sqrt{(1-g(u)^2)/(1-u^2)}$. Its Jacobian is
-$g'(u)\sqrt{(1-g(u)^2)/(1-u^2)}$, with $g'(u)\ge .1$.
-The inverse solves the monotone scalar cubic, applies $s\to-s$, and reverses
-the coupling order. This is a normalizing flow with an analytic nonzero Haar
-Jacobian. Eigenvector phases cancel in the subgroup rotation. A spectral-gap
-gate suppresses updates near repeated eigenvalues; degenerate frames give
-identity updates. Analytic CUDA 3x3 frames with a CPU near-collision fallback
-avoid the L24 solver workspace while preserving autograd. Flow 1 starts from
-independent Haar links and sets each dependent second link to $U_1^\dagger C$.
-The four first links are Haar gauge degrees of freedom; the other 56 free
-links are transformed. Both retained links remain frozen during Flow 1.
-
-Flow 1 starts with the exact conditional Haar NLL, then fits generated smeared
-operator means and widths to control the small model's approximation error.
-Flow 2 first minimizes a
-paired link transport loss, then fits means and log variances of the four
-operators on **generated** Flow-1 samples. Validation chooses the checkpoint.
-The warm-up uses stochastic latent draws; shared-offset refinement uses one
-fixed draw per training/validation source. The trainer also supports a cached
-four-draw pool for larger gradient-based fine fits.
-Finally, bounded least-squares fitting can refine six shared offsets (shift,
-shape and long-staple weight in each half of a flow) on fixed training draws.
-It changes only flow parameters, not the samples by post-hoc rescaling.
-Finite differences use an absolute step of 0.002;
-the validation set selects among the training-fitted candidates.
-The final refinement uses independent per-operator standard deviations;
-earlier moment fits used regularized covariance. Loss magnitudes across these
-two metrics are not directly comparable and are plotted as separate series.
-This moment fit tests the selected operators; it does not establish equality
-of the complete gauge-field probability measures.
-
-The new coupling is gauge equivariant: under a local transformation,
-$F\to G F D$, and arbitrary eigenvector phases $D$ cancel. This follows the
-inactive-context and symmetry principles of
-[He et al., arXiv:2511.02018](https://arxiv.org/abs/2511.02018), while retaining
-the analytic SU(2) Haar maps. The checkpoint records the coupling version;
-older fixed-colour checkpoints remain non-equivariant.
-"""),
-    nbf.v4.new_code_cell("""fig, axes = plt.subplots(2, 2, figsize=(11, 6), constrained_layout=True)
-phases = ['conditional_nll', 'smeared_moments', 'paired_transport', 'generated_moments']
-titles = ['Flow 1: conditional NLL / free link', 'Flow 1: generated smeared operators', 'Flow 2: paired transport', 'Flow 2: generated fine operators']
-for ax, phase, title in zip(axes.flat, phases, titles):
+Calibration and final generation retain complex128 fields and float64 conditioners. Alternating
+checkerboards, directions and embedded SU(2) rotations use covariant inactive
+staple frames. Radial Möbius and monotone cubic maps have analytic Haar
+Jacobians and inverses. Flow 1 freezes both links of each retained two-link
+product; Flow 2 transports every link. Small-lattice inverse, gauge covariance
+and density checks gate updates; full L24 checks gate calibration.
+The smoother includes a polar projection, so Flow 2 learns a distributional
+transport rather than a global inverse of that smoother.
+'''),
+nbf.v4.new_code_cell('''fig, axes = plt.subplots(2, 2, figsize=(12, 7), constrained_layout=True)
+for ax, phase, title in zip(axes.flat,
+        ['conditional_nll', 'smeared_moments', 'paired_transport', 'generated_moments'],
+        ['Flow 1: conditional NLL / free link', 'Flow 1: six-operator calibration',
+         'Flow 2: paired transport', 'Flow 2: six-operator calibration']):
     rows = [r for r in history if r['phase'] == phase]
-    moment = phase in ['smeared_moments', 'generated_moments']
-    groups = dict.fromkeys((r.get('mean_metric', 'covariance'), r.get('variance_weight', 1),
-                            r.get('optimizer', 'Adam')) for r in rows)
-    for metric, weight, method in groups:
-        current = [r for r in rows if (r.get('mean_metric', 'covariance'), r.get('variance_weight', 1),
-                                      r.get('optimizer', 'Adam')) == (metric, weight, method)]
-        suffix = f' ({method}, {metric}, width ×{weight:g})' if moment else ''
-        ax.plot([r['epoch'] for r in current], [r['train_loss'] for r in current], 'o-', label='Training'+suffix)
-        val = [r for r in current if 'validation_loss' in r]
-        if val:
-            ax.plot([r['epoch'] for r in val], [r['validation_loss'] for r in val], 'o-', label='Validation'+suffix)
+    ax.plot([r['epoch'] for r in rows], [r['train_loss'] for r in rows], 'o-', label='Training')
+    ax.plot([r['epoch'] for r in rows], [r['validation_loss'] for r in rows], 'o-', label='Validation')
+    rejected = [r for r in rows if not r['stability']['passed']]
+    if rejected:
+        ax.scatter([r['epoch'] for r in rejected], [r['validation_loss'] for r in rejected],
+                   marker='x', s=70, color='#b71c1c', zorder=4, label='Failed numerical check')
+    selected = min((r for r in rows if r['stability']['passed']), key=lambda r: r['validation_loss'])
+    ax.scatter([selected['epoch']], [selected['validation_loss']], marker='*', s=130,
+               color='#2e7d32', zorder=5, label='Selected stable checkpoint')
     if phase in ['smeared_moments', 'generated_moments']:
         ax.set_yscale('log')
-    ax.set(title=title, xlabel='Epoch / calibration trial' if moment else 'Epoch')
+    ax.set(title=title, xlabel='Calibration evaluation' if 'moments' in phase else 'Epoch')
     ax.legend(fontsize=8)
+fig.savefig(RUN/'upsampling_training.png', dpi=180, bbox_inches='tight')
+fig.savefig(RUN/'upsampling_training.pdf', bbox_inches='tight')
 plt.show()
-"""),
-    nbf.v4.new_markdown_cell("""## Final fine-lattice distributions
+for stage in (1, 2):
+    fit = json.loads((RUN/f'calibration_stage{stage}.json').read_text())
+    print(f"Flow {stage}: {fit['evaluations']} evaluations; stop: {fit['stopping_reason']}; optimizer converged: {fit['optimizer_converged']}; best validation loss: {fit['best_validation_loss']:.6g}")
+'''),
+nbf.v4.new_markdown_cell(r'''## Eight-operator distributions
 
-One fresh latent draw is used per held-out downsampled configuration.
-The reference and generated samples are paired through their coarse source;
-the combined-standard-error shift is shown as the same descriptive diagnostic
-used for downsampling, not as an independent-sample hypothesis test.
-Acceptance requires every mean within **one target standard deviation** and
-every width ratio in **[0.8, 1.2]**. A shared set of bins is used for each panel.
-"""),
-    nbf.v4.new_code_cell("""fig, axes = plt.subplots(2, 2, figsize=(11, 7), constrained_layout=True)
-for k, ax in enumerate(axes.flat):
-    reference = data['fine_reference'][:, k]
-    generated = data['flow2_fine'][:, k]
-    bins = np.histogram_bin_edges(np.r_[reference, generated], bins=18)
-    ax.hist(reference, bins=bins, density=True, alpha=.40, color='#333333', label='Heatbath L24')
-    ax.hist(generated, bins=bins, density=True, histtype='step', linewidth=2, color='#1565c0', label='Two-flow L24')
-    ax.axvline(reference.mean(), color='#333333', linestyle=':')
-    ax.axvline(generated.mean(), color='#1565c0', linestyle=':')
-    m = metrics['flow2_fine']
-    ax.set(title=f"{names[k]} | shift/σ = {m['mean_shift_in_target_sigma'][k]:.2f}, width = {m['std_ratio'][k]:.2f}, KS = {m['ks_statistic'][k]:.2f}",
-           xlabel=names[k], ylabel='Probability density')
-    ax.ticklabel_format(axis='x', style='sci', scilimits=(-3, 3), useOffset=False)
-    ax.legend(fontsize=9)
-plt.show()
-rows = ['| Operator | Heatbath mean | Two-flow mean | Relative mean error | Shift / target σ | Width ratio | KS | Pass |',
-        '| --- | ---: | ---: | ---: | ---: | ---: | ---: | :---: |']
-m = metrics['flow2_fine']
-for k, name in enumerate(names):
-    passed = abs(m['mean_shift_in_target_sigma'][k]) <= 1 and .8 <= m['std_ratio'][k] <= 1.2
-    relative = 100*(m['mean'][k]/m['target_mean'][k]-1)
-    rows.append(f"| {name} | {m['target_mean'][k]:.7g} | {m['mean'][k]:.7g} | {relative:+.3f}% | {m['mean_shift_in_target_sigma'][k]:.3f} | {m['std_ratio'][k]:.3f} | {m['ks_statistic'][k]:.3f} | {'YES' if passed else 'NO'} |")
-display(Markdown('\\n'.join(rows)))
-display(Markdown(f"**Final distribution criterion: {'PASS' if m['acceptance']['distribution_match'] else 'FAIL'}.**"))
-"""),
-    nbf.v4.new_markdown_cell("""## Diagnose the two stages separately
+Use one fresh Haar latent draw for each of the **60 held-out coarse sources**,
+with the same draw passed through Flow 1 and Flow 2. Results are shown in stage
+order: **Flow 1 versus the smeared reference $S(U)$**, then **Flow 2 versus the
+original fine reference $U$**. Each stage has its own eight-operator raw
+distributions, followed by its statistical tables.
+Reference and generated fields each use 18 bins over their own data range,
+overlaid on the same axes with probability-density normalization.
 
-The first row checks generated smeared fields against the actual smeared
-heatbath fields. The second row applies Flow 2 to actual smeared test fields
-(teacher input). This distinguishes errors introduced by Flow 1 from the
-learned desmearing transport. Teacher input is a diagnostic, not the final
-upsampling result.
-Because Flow 2 is refined on generated Flow-1 fields, it can compensate for
-Flow-1 bias: matching the final operators alone does not establish a faithful
-inverse on actual smeared fields. Both input domains are therefore shown.
-"""),
-    nbf.v4.new_code_cell("""fig, axes = plt.subplots(2, 4, figsize=(15, 6), constrained_layout=True)
-for row, (candidate, target, label) in enumerate([
-    ('flow1_smeared', 'smeared_reference', 'Flow 1'),
-    ('teacher_fine', 'fine_reference', 'Flow 2, teacher input')]):
-    for k in range(4):
-        ax = axes[row, k]
-        x, y = data[candidate][:, k], data[target][:, k]
-        bins = np.histogram_bin_edges(np.r_[x, y], bins=15)
-        ax.hist(y, bins=bins, density=True, alpha=.35, color='#333333', label='Target')
-        ax.hist(x, bins=bins, density=True, histtype='step', linewidth=1.8, color='#d17618', label=label)
-        ax.set(title=names[k], xlabel=f"shift/σ = {metrics[candidate]['mean_shift_in_target_sigma'][k]:.2f} | width = {metrics[candidate]['std_ratio'][k]:.2f}")
+The distribution criterion requires each mean shift to be within **one target
+standard deviation** and each width ratio in **[0.8, 1.2]**. The combined-SE shift
+is descriptive for these paired sources. Results are grouped into the six
+training operators, two held-out operators and all eight.
+'''),
+nbf.v4.new_code_cell('''def plot_operators(candidate, target, title, filename):
+    figure, axes = plt.subplots(2, 4, figsize=(15, 7), constrained_layout=True)
+    reference_label = 'Smeared reference S(U)' if target == 'smeared_reference' else 'Fine reference U'
+    for k, ax in enumerate(axes.flat):
+        reference, generated = data[target][:, k], data[candidate][:, k]
+        ax.hist(reference, bins=18, density=True, alpha=.4, color='#333333', label=reference_label)
+        ax.hist(generated, bins=18, density=True, histtype='step', linewidth=1.8,
+                color='#1565c0', label=title)
+        suffix = ' [HELD OUT]' if names[k] in held_out else ''
+        ax.set_title(labels[k]+suffix, fontsize=12)
+        ax.set(xlabel=labels[k], ylabel='Density')
         ax.ticklabel_format(axis='x', style='sci', scilimits=(-3, 3), useOffset=False)
-        ax.legend(fontsize=7)
-plt.show()
-"""),
-    nbf.v4.new_markdown_cell("""## Numerical integrity and reproducibility
+        m = metrics[candidate]
+        ax.text(.03, .96, f"shift/σ={m['mean_shift_in_target_sigma'][k]:+.2f}\\nwidth={m['std_ratio'][k]:.2f}",
+                transform=ax.transAxes, va='top', fontsize=9)
+    handles, legend_labels = axes.flat[0].get_legend_handles_labels()
+    figure.legend(handles, legend_labels, loc='outside upper center', ncol=2)
+    figure.savefig(RUN/f'{filename}.png', dpi=180, bbox_inches='tight')
+    figure.savefig(RUN/f'{filename}.pdf', bbox_inches='tight')
+    plt.show()
 
-No heatbath/HMC sweeps are applied after either flow. The generated samples
-are checked for SU(3) membership and Flow 1 is checked for its blocking
-constraint. Independent PyQUDA measurements cross-check the Torch operators
-when enabled during evaluation. Charts and numbers in this notebook can be
-reproduced from the small result bundle committed beside it; training fields
-remain under the ignored `artifacts/` directory.
-"""),
-    nbf.v4.new_code_cell("""print('Max SU(3) unitarity / determinant errors:', metrics['max_su3_errors'])
-print('Max |block(Flow1) - coarse|:', metrics['max_blocking_error'])
-differences = np.asarray(metrics['pyquda_differences'])
-print('PyQUDA - Torch max |difference|:', np.abs(differences).max(axis=0) if differences.size else 'not run')
-print('Acceptance:', metrics['flow2_fine']['acceptance'])
-print('Frozen downsampling coefficients:', run['downsampling_architecture']['coefficients'])
-print('Coupling / gauge equivariance:', run['coupling'], run['gauge_equivariant'])
-if (RUN / 'numerics.json').exists():
-    numerical = json.loads((RUN / 'numerics.json').read_text())
-    if numerical['checkpoint_sha256'] == run['checkpoint_sha256']:
-        print('Trained-flow covariance checks:', numerical['records'])
-        print('Eight-dimensional Haar Jacobian checks:', numerical['haar_jacobians'])
-        print('Synchronized-noise full-lattice generation:', numerical.get('full_lattice_generation'))
-"""),
-    nbf.v4.new_markdown_cell("""Training and report commands (repository root):
+def report_operators(candidate, title):
+    m = metrics[candidate]
+    rows = [f'**{title}**', '',
+            '| Operator | Role | Target mean | Generated mean | Shift / target σ | Shift / combined SE | Width ratio | Pass |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | :---: |']
+    for k, name in enumerate(names):
+        passed = abs(m['mean_shift_in_target_sigma'][k]) <= 1 and .8 <= m['std_ratio'][k] <= 1.2
+        role = 'held out' if name in held_out else 'training'
+        rows.append(f"| {name} | {role} | {m['target_mean'][k]:.7g} | {m['mean'][k]:.7g} | {m['mean_shift_in_target_sigma'][k]:+.3f} | {m['standardized_shift'][k]:+.3f} | {m['std_ratio'][k]:.3f} | {'YES' if passed else 'NO'} |")
+    display(Markdown('\\n'.join(rows)))
+    summary = ['| Operator group | Means within one target σ | Widths within 20% | Distribution match |',
+               '| --- | :---: | :---: | :---: |']
+    for group, result in m['group_acceptance'].items():
+        summary.append(f"| {group} | {result['test_all_means_within_one_target_sigma']} | {result['test_all_std_ratios_within_20_percent']} | {result['distribution_match']} |")
+    display(Markdown('\\n'.join(summary)))
+'''),
+nbf.v4.new_markdown_cell(r'''## Flow 1: generated smeared fields versus smeared reference
+
+Compare $F_1(C,z)$ with the actual v4-smeared reference $S(U)$ on all 60 test
+sources. The figure shows all eight operators; $W_{13}$ and $W_{22}$ are held
+out of training. The horizontal axes show the original operator values.
+'''),
+nbf.v4.new_code_cell('''plot_operators('flow1_smeared', 'smeared_reference', 'Flow 1 output', 'upsampling_flow1_distributions')
+report_operators('flow1_smeared', 'Flow 1 vs smeared reference')
+'''),
+nbf.v4.new_markdown_cell(r'''## Flow 2: final generated fields versus fine reference
+
+Compare $F_2(F_1(C,z))$ with the original fine reference $U$ on the same 60 test
+sources. These outputs use the generated Flow-1 fields as inputs. The figure
+shows all eight operators on their original scales.
+'''),
+nbf.v4.new_code_cell('''plot_operators('flow2_fine', 'fine_reference', 'Flow 2 output', 'upsampling_fine_distributions')
+report_operators('flow2_fine', 'Flow 2 vs fine reference')
+'''),
+nbf.v4.new_markdown_cell(r'''## Additional diagnostic: Flow 2 with teacher input
+
+This comparison feeds the actual smeared reference $S(U)$ into Flow 2 and
+compares $F_2(S(U))$ with $U$. It diagnoses transport separately from Flow-1
+generation. The final upsampling output is the generated-input result in the
+preceding section. A successful comparison of eight observables alone would
+not establish equality of the full gauge-field probability measures.
+'''),
+nbf.v4.new_code_cell('''plot_operators('teacher_fine', 'fine_reference', 'Flow 2, teacher input', 'upsampling_teacher_distributions')
+report_operators('teacher_fine', 'Flow 2 with teacher input vs fine reference')
+'''),
+nbf.v4.new_markdown_cell('''## Numerical checks and topological charge
+
+Both generated stages are exported as FP64 NERSC fields with source IDs,
+latent seeds and checkpoint hashes. SU(3) reunitarization in double precision
+prepares the Wilson-flow inputs; its maximum field change is recorded per
+configuration. No Monte Carlo rethermalization is performed.
+
+The companion [topological-charge notebook](topo_charge.ipynb) applies the
+same Wilson gradient flow to both outputs: $t/a^2=0$–5, RK3 step 0.02,
+measurements every 0.1, and unrounded clover topological charge.
+'''),
+nbf.v4.new_code_cell('''print('Maximum raw Flow 1 / Flow 2 SU(3) unitarity and determinant errors:', metrics['max_su3_errors'])
+print('Maximum |block(Flow 1) - coarse|:', metrics['max_blocking_error'])
+print('Three PyQUDA checks, max difference per operator:', np.abs(metrics['pyquda_differences']).max(axis=0))
+print('Three Flow-1 PyQUDA checks, max difference per operator:', np.abs(metrics['pyquda_stage1_differences']).max(axis=0))
+numerical = json.loads((RUN/'numerics.json').read_text())
+assert numerical['checkpoint_sha256'] == run['checkpoint_sha256']
+print('Local Haar Jacobian checks:', numerical['haar_jacobians'])
+print('Full L24 checks:', numerical['full_lattice_generation'])
+'''),
+nbf.v4.new_markdown_cell('''## Reproduction
+
+Run all commands through the root `.venv`:
 
 ```bash
-OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python scripts/upsample/train.py --skip-evaluation
-.venv/bin/python scripts/upsample/calibrate.py --stage 1
-.venv/bin/python scripts/upsample/calibrate.py --stage 2
-.venv/bin/python scripts/upsample/train.py --evaluate-only --pyquda-check
-.venv/bin/python scripts/upsample/validate.py
-.venv/bin/python scripts/upsample/make_notebook.py
+.venv/bin/python scripts/upsample/rerun.py --output artifacts/4dsu3/upsample/new_run
+.venv/bin/python scripts/upsample/make_notebook.py --run artifacts/4dsu3/upsample/new_run
 ```
 
-Set `RGFLOW_UPSAMPLE_RUN` to display another completed run. Checkpoint files
-contain both flow state dictionaries and sweep counts. The current experiment
-uses downsampled heatbath fields as its coarse source; transfer to an
-independently generated L12 heatbath ensemble is a separate validation.
-"""),
+The runner resolves the selected downsampling experiment, records all source
+hashes and settings, trains both flows, calibrates each stage, validates the
+frozen checkpoint and evaluates all 60 test sources. Select a fresh training
+directory for a new run; the presentation bundle is replaced on regeneration.
+'''),
 ]
-if run_metadata.get('coupling') == 'covariant_frame_mobius_monotone_cubic_fp64_v2':
-    for cell in notebook.cells:
-        if cell.cell_type == 'markdown' and cell.source.startswith('## Invertible group couplings'):
-            cell.source += """
-
-This continuation retains float64 conditioners and complex128 fields, including
-when the external input is single precision. Small-lattice CPU/CUDA covariance,
-inverse and log-density checks, plus a physical L24 roundtrip, gate training
-updates and calibration selection. Unstable updates are rejected. The new
-moment objective uses per-target-width means and ten times the log-variance
-residuals; its losses are separated from the earlier covariance objective.
-CUDA gradient checkpoints store their exact input fields in pinned CPU memory;
-a full L24 moment VJP verifies finite gradients and GPU memory before training.
-The uncalibrated covariant checkpoint provides the warm start. Flow 1 is
-calibrated before the continued Flow-2 moment fit.
-"""
-    notebook.cells[-1].source = f"""The stable continuation is run by
-`scripts/upsample/continue_stable_v3.sh`. It records its current phase and logs in
-`{args.run.relative_to(ROOT) if args.run.is_absolute() else args.run}`.
-The execution notes, training invocations and calibration summaries record
-the exact settings. Final reports require matching numerical and checkpoint
-hashes. No test targets enter the fits.
-"""
-if not run_metadata.get('gauge_equivariant', False):
-    for cell in notebook.cells:
-        if cell.cell_type == 'markdown' and cell.source.startswith('## Invertible group couplings'):
-            cell.source = r"""## Legacy fixed-colour group couplings
-
-This saved run uses the earlier fixed-colour SU(2) subgroups and is **not
-gauge equivariant**. Its radial and monotone cubic maps retain their analytic
-Haar Jacobians and inverse coupling order. Flow 1 fixes the retained two-link
-products; Flow 2 is an unconstrained transport. The covariant-eigenframe
-architecture is used only by the separately versioned revised run.
-"""
-execution = json.loads((args.run/'execution_notes.json').read_text()) if (args.run/'execution_notes.json').exists() else {}
-if execution.get('mode') == 'quick_scalar':
-    for cell in notebook.cells:
-        if cell.cell_type == 'markdown' and cell.source.startswith('## Invertible group couplings'):
-            cell.source = cell.source.split('Flow 1 starts with the exact conditional Haar NLL')[0]+r"""
-The current short experiment reuses the pretrained covariant maps in double
-precision. It performs **no new gradient training**. Only a single offset
-$\delta_k$ is added to all three raw scale outputs in every sweep of flow $k$.
-Feature weights, cubic shapes and staple weights remain fixed. Up to four
-predefined offsets per flow are measured on four training and four validation
-sources, with fixed Haar noise. Validation selects a numerically stable value.
-Flow 1 is frozen before the Flow-2 scan. Final measurements use 12 held-out
-sources with fresh noise and three PyQUDA checks; this is a small pilot.
-
-The plots include the inherited checkpoint's earlier training history and
-the current scalar scan as separate series. Scalar selection fits target-width
-normalized means and log variances, without using test targets. Final numerical
-reports must match the evaluated checkpoint hash. The invariant-context and
-covariant-update principles follow [He et al., arXiv:2511.02018](https://arxiv.org/abs/2511.02018).
-"""
-    notebook.cells[-1].source = """Quick-run command (choose a new output directory):
-
-```bash
-.venv/bin/python scripts/upsample/quick.py --output artifacts/4dsu3/upsample/quick_reproduction --minutes 16
-```
-
-The underlying source checkpoint and exact settings are recorded in
-`execution_notes.json`. The test subset follows the existing split; no heatbath
-ensemble is regenerated and no rethermalization is performed.
-"""
-if execution.get('mode') == 'six_offset_fine':
-    for cell in notebook.cells:
-        if cell.cell_type == 'markdown' and cell.source.startswith('## Invertible group couplings'):
-            cell.source = cell.source.split('Flow 1 starts with the exact conditional Haar NLL')[0]+f"""
-This experiment reuses the pretrained covariant maps in double precision.
-**Flow 1 is frozen at its stable uncalibrated checkpoint.** A previously
-calibrated Flow 2 provides the warm start, then six offsets are refitted:
-raw scale, cubic shape and long-staple weight separately in its two sweeps.
-Feature-dependent weights remain fixed. No new gradient epochs are run.
-The fit uses {execution['train_configurations']} training and
-{execution['validation_configurations']} validation sources with fixed Haar
-noise, target-width-normalized means and log variances. Validation selects
-the best numerically stable candidate with all mean shifts within two target
-widths; the stricter test acceptance criterion is unchanged. The final evaluation uses
-{execution['test_configurations']} held-out sources with fresh noise and
-three independent PyQUDA measurement checks. No test targets enter the fit.
-
-The intermediate smeared distribution and teacher-input transport are
-reported separately: fine-output overlap does not imply that those
-distributions agree. Covariance, inverse, log-density and full eight-dimensional
-local Haar Jacobian checks refer to the evaluated checkpoint hash.
-"""
-    notebook.cells[-1].source = """Reproduction command (choose a new output directory):
-
-```bash
-.venv/bin/python scripts/upsample/overlap.py --output artifacts/4dsu3/upsample/overlap_reproduction
-```
-
-Source checkpoint hashes and the time budget are recorded in
-`execution_notes.json`; calibration summaries contain the selected offsets.
-The frozen smoother and heatbath ensembles are reused without rethermalization.
-"""
-path = ROOT / "presentation/upsampling_2flow.ipynb"
+path = ROOT/'presentation/upsampling_2flow.ipynb'
 nbf.write(notebook, path)
-manager = KernelManager(kernel_name="python3")
-manager.kernel_spec.argv[0] = str(ROOT / ".venv/bin/python")
-NotebookClient(notebook, timeout=300, km=manager, resources={"metadata": {"path": str(ROOT)}}).execute()
-nbf.write(notebook, path)
+manager = KernelManager(kernel_name='python3', transport='ipc', ip=str(ROOT/'temp/upsampling_notebook_kernel'))
+manager.kernel_spec.argv = [str(ROOT/'.venv/bin/python'), '-m', 'ipykernel_launcher', '-f', '{connection_file}']
+NotebookClient(notebook, timeout=300, km=manager, resources={'metadata': {'path': str(ROOT)}}).execute()
 nbf.validate(notebook)
+nbf.write(notebook, path)
 print(path)

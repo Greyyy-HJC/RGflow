@@ -1,0 +1,49 @@
+{
+  "fine_dir": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/L24_beta6p20",
+  "coarse_dir": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/L12_beta5p775",
+  "reference_run": null,
+  "output": null,
+  "train_configs": 60,
+  "max_nfev": 100,
+  "hook": true,
+  "local": true,
+  "device": "cuda",
+  "workers": 4,
+  "seed": 1234,
+  "initial_run": null,
+  "pyquda_check": true,
+  "observables": [
+    "plaquette",
+    "rectangle_1x2",
+    "rectangle_1x3",
+    "square_2x2",
+    "rectangle_2x3",
+    "square_3x3",
+    "polyakov_abs2",
+    "polyakov_abs4"
+  ],
+  "training_observables": [
+    "plaquette",
+    "rectangle_1x2",
+    "rectangle_2x3",
+    "square_3x3",
+    "polyakov_abs2",
+    "polyakov_abs4"
+  ],
+  "held_out_observables": [
+    "rectangle_1x3",
+    "square_2x2"
+  ],
+  "command": [
+    "scripts/downsample/fit_polynomial.py",
+    "--hook",
+    "--local",
+    "--workers",
+    "4",
+    "--device",
+    "cuda",
+    "--max-nfev",
+    "100",
+    "--pyquda-check"
+  ]
+}

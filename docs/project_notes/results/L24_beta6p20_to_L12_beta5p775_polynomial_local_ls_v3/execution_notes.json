@@ -1,0 +1,21 @@
+{
+  "moment_backend": "four concurrent CPU configuration evaluations with torch.set_num_threads(2); GPU basis construction and final evaluation",
+  "initial_gpu_attempt": {
+    "evaluations": 4,
+    "best_training_loss": 1222.8484960738413,
+    "stopped_for": "measured 146-225 seconds per evaluation; CPU configuration parallelism is faster",
+    "history_archive": "gpu_attempt_history.json"
+  },
+  "sample_selection": "same fixed 60 fine training configurations and all 180 coarse training targets, seed 1234",
+  "test_targets_used_for_fitting": false,
+  "final_evaluation": {
+    "device": "cpu",
+    "workers": 4,
+    "method": "exact retained polynomial basis",
+    "configurations": 300,
+    "pyquda_test_configurations": 3,
+    "checkpoint_changed": false,
+    "command": ".venv/bin/python scripts/downsample/evaluate.py --device cpu --workers 4 --pyquda-configs 3",
+    "gpu_evaluation_stopped_at": "first 30/180 training configurations after a new GPU topology measurement began"
+  }
+}

@@ -1,0 +1,250 @@
+{
+  "settings": {
+    "input": "/home/jinchen/git/fnal/RGflow/temp/topo_charge_hmc_L24",
+    "lattice_size": [
+      24,
+      24,
+      24,
+      24
+    ],
+    "beta": 6.2,
+    "ensemble_size": 30,
+    "start": 0,
+    "stride": 1,
+    "samples": 30,
+    "epsilon": 0.02,
+    "t_max": 5.0,
+    "measure_every": 5,
+    "flow": "4D Wilson gradient flow",
+    "integrator": "QUDA third-order Runge-Kutta (RK3)",
+    "precision": "double",
+    "charge_operator": "QUDA clover field strength, traceless SU(3), unrounded total Q",
+    "time_units": "t/a^2",
+    "reader": "PyQUDA NERSC reader: checksum checked; double-precision HMC links",
+    "pyquda_version": "0.10.54",
+    "configurations": [
+      {
+        "index": 10,
+        "filename": "hmc_L24_beta6p20_traj_0010.nersc",
+        "sha256": "dc22fcc37f2d05dcb99002f34485d8d39240ef8fdfa9d9f5a6409f41373243a1",
+        "seed": 20261015
+      },
+      {
+        "index": 20,
+        "filename": "hmc_L24_beta6p20_traj_0020.nersc",
+        "sha256": "f464f30a2a8c98aacf2caf43ffa211eca3f9a2085ee2dbbb23be08acfcfa0574",
+        "seed": 20261015
+      },
+      {
+        "index": 30,
+        "filename": "hmc_L24_beta6p20_traj_0030.nersc",
+        "sha256": "eb03fc4660d6da5783a2f70aad61e2c5e587c5d52fa46db0ad59daa4da9d5af8",
+        "seed": 20261015
+      },
+      {
+        "index": 40,
+        "filename": "hmc_L24_beta6p20_traj_0040.nersc",
+        "sha256": "ac19a0e7af4fb55c3aa0a636a02b11824d057b144ca2d850d77d30df79796a2d",
+        "seed": 20261015
+      },
+      {
+        "index": 50,
+        "filename": "hmc_L24_beta6p20_traj_0050.nersc",
+        "sha256": "5a27352c61db89c012ccfcba835310422f75a0abfb356ec21c65da4fcce04773",
+        "seed": 20261015
+      },
+      {
+        "index": 60,
+        "filename": "hmc_L24_beta6p20_traj_0060.nersc",
+        "sha256": "0a93cabb702ac9c047bb637a8eb62da9420818a69804a47fc346b2715de59b17",
+        "seed": 20261015
+      },
+      {
+        "index": 70,
+        "filename": "hmc_L24_beta6p20_traj_0070.nersc",
+        "sha256": "9d98bfab0afce4fc2c11286b1dd6b212cb7c09fc15de6b09a171b192616146a5",
+        "seed": 20261015
+      },
+      {
+        "index": 80,
+        "filename": "hmc_L24_beta6p20_traj_0080.nersc",
+        "sha256": "338bdcf2870a6b14402a2ef95e63c49706faa7c711d5e8342dd76e38b36c4356",
+        "seed": 20261015
+      },
+      {
+        "index": 90,
+        "filename": "hmc_L24_beta6p20_traj_0090.nersc",
+        "sha256": "131ae19fde9e2be4ee2906b859c7eaed87bcd0626369a15d62029e81299efc71",
+        "seed": 20261015
+      },
+      {
+        "index": 100,
+        "filename": "hmc_L24_beta6p20_traj_0100.nersc",
+        "sha256": "a2e717e3fc0686d438824e0b07ca5b44cf7aaa371fa94571d31a47c0fa4d10e1",
+        "seed": 20261015
+      },
+      {
+        "index": 110,
+        "filename": "hmc_L24_beta6p20_traj_0110.nersc",
+        "sha256": "e9f93d53b00a317de47b8d27bb6b5d6a22d57bdfe32366d1a8589fb40342226d",
+        "seed": 20261015
+      },
+      {
+        "index": 120,
+        "filename": "hmc_L24_beta6p20_traj_0120.nersc",
+        "sha256": "cb1db694998b74b5100d45d39ce5887e63fbb8366220cb766b63b991612658e0",
+        "seed": 20261015
+      },
+      {
+        "index": 130,
+        "filename": "hmc_L24_beta6p20_traj_0130.nersc",
+        "sha256": "59ad5d67ecdfbff1ac9e953d47f9b0a931f29665361457cc1e3eae8db6fa27d3",
+        "seed": 20261015
+      },
+      {
+        "index": 140,
+        "filename": "hmc_L24_beta6p20_traj_0140.nersc",
+        "sha256": "a34dbf71fd7ec8c76af5b73eaa985079963511e5fa77c063d8ff5a2ef6348435",
+        "seed": 20261015
+      },
+      {
+        "index": 150,
+        "filename": "hmc_L24_beta6p20_traj_0150.nersc",
+        "sha256": "2b4b1fdbb8f51ff3c3a5642312123fb2878df4948ecb4e09e4bd7c3301213a79",
+        "seed": 20261015
+      },
+      {
+        "index": 160,
+        "filename": "hmc_L24_beta6p20_traj_0160.nersc",
+        "sha256": "2d6f5dbfc8680c4252a5af90326a25988d28147639fc678e2e1670b4a23b79df",
+        "seed": 20261015
+      },
+      {
+        "index": 170,
+        "filename": "hmc_L24_beta6p20_traj_0170.nersc",
+        "sha256": "23ddb597f53849f1e132253dee8c1c1c12727ad542e6ff23e5a98b0a6bce37a6",
+        "seed": 20261015
+      },
+      {
+        "index": 180,
+        "filename": "hmc_L24_beta6p20_traj_0180.nersc",
+        "sha256": "6622173763564b4c3883c0c62e8c56de125b5273756d1759ef1c8216ae3126d7",
+        "seed": 20261015
+      },
+      {
+        "index": 190,
+        "filename": "hmc_L24_beta6p20_traj_0190.nersc",
+        "sha256": "3c81f31cb3dd67d808622c31c5e55703aeea67dd52214567b6bbd387f27d9520",
+        "seed": 20261015
+      },
+      {
+        "index": 200,
+        "filename": "hmc_L24_beta6p20_traj_0200.nersc",
+        "sha256": "8c924ff99ad5a5f6c8d4fd7aa16d58cc828983b99cdc844551191394a8d7bfe9",
+        "seed": 20261015
+      },
+      {
+        "index": 210,
+        "filename": "hmc_L24_beta6p20_traj_0210.nersc",
+        "sha256": "b4f410d7b06e8e96edc14a14e96a7703398ced50af9b26a023cd6fa4bc7aff98",
+        "seed": 20261015
+      },
+      {
+        "index": 220,
+        "filename": "hmc_L24_beta6p20_traj_0220.nersc",
+        "sha256": "db1c754935fdcf17141832a1dcab86ddb48392e037327aefb59f393856c22505",
+        "seed": 20261015
+      },
+      {
+        "index": 230,
+        "filename": "hmc_L24_beta6p20_traj_0230.nersc",
+        "sha256": "1ee07cf248447f0c2f64d8946e9606d30f2e34b31a1de7f949b5fdeef90ad47d",
+        "seed": 20261015
+      },
+      {
+        "index": 240,
+        "filename": "hmc_L24_beta6p20_traj_0240.nersc",
+        "sha256": "8688008edb8363069b949c6d0c19ffb0a5c099c312732cf55cd2189cb2ec92ad",
+        "seed": 20261015
+      },
+      {
+        "index": 250,
+        "filename": "hmc_L24_beta6p20_traj_0250.nersc",
+        "sha256": "d59041ef2a7c3621f3d8d7fdb59ae06484ee91f3a6cb9bf19420ecf3f263898d",
+        "seed": 20261015
+      },
+      {
+        "index": 260,
+        "filename": "hmc_L24_beta6p20_traj_0260.nersc",
+        "sha256": "e2a5ca6fb194e002f33f1585da04012a2cbe16829e83d87fd15c2ddc560db750",
+        "seed": 20261015
+      },
+      {
+        "index": 270,
+        "filename": "hmc_L24_beta6p20_traj_0270.nersc",
+        "sha256": "c7552b2a1705d74400b8ea576085d76d152966c75377bdcbc75eb21503bbba1c",
+        "seed": 20261015
+      },
+      {
+        "index": 280,
+        "filename": "hmc_L24_beta6p20_traj_0280.nersc",
+        "sha256": "64bf9051683d5e54e69efa60c7ef4dc7f189a2698ae7fad8e75fd4bf1619b28b",
+        "seed": 20261015
+      },
+      {
+        "index": 290,
+        "filename": "hmc_L24_beta6p20_traj_0290.nersc",
+        "sha256": "b7c4b80255a3a6fb6f9c2f2ebeb0f095f855e0b2b36b65f44dd9f123c2fdb961",
+        "seed": 20261015
+      },
+      {
+        "index": 300,
+        "filename": "hmc_L24_beta6p20_traj_0300.nersc",
+        "sha256": "8b6b2279e577898f634b27768f3ff0e5fe51747c1dc94e87445f7b0644af8271",
+        "seed": 20261015
+      }
+    ],
+    "hmc_settings": {
+      "source": {
+        "input": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/L24_beta6p20",
+        "index": 299,
+        "step": 31000,
+        "filename": "wilson_beta6p20_L24_cfg_0299.nersc",
+        "seed": 1235,
+        "bytes": 95552178,
+        "sha256": "ac3f10c76e93300fcaf6ac29e4cb5647f7c992faf93088584f1b25eeefe48e4c",
+        "plaquette": 0.6136007873750442,
+        "max_unitarity_error": 1.0160166685757588e-07,
+        "max_determinant_error": 8.390566987404681e-05
+      },
+      "lattice_size": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "beta": 6.2,
+      "action": "Wilson pure gauge SU(3), periodic in all four directions",
+      "trajectories": 300,
+      "save_every": 10,
+      "trajectory_length": 1.0,
+      "md_steps": 50,
+      "md_step_size": 0.02,
+      "integrator": "second-order Omelyan O2Nf2Ng0V",
+      "lambda": 0.1931833275037836,
+      "projection_tolerance": 2e-15,
+      "seed": 20261015,
+      "precision": "double",
+      "pyquda_version": "0.10.54",
+      "metropolis": true,
+      "warmup": 0,
+      "config_dir": "/home/jinchen/git/fnal/RGflow/temp/topo_charge_hmc_L24",
+      "saved_state": "post-Metropolis chain state; rejected trajectories count as HMC steps",
+      "storage": "NERSC IEEE64 little-endian 3x3"
+    },
+    "input_storage": "NERSC IEEE64 little-endian 3x3"
+  },
+  "completed_configurations": 30,
+  "complete": true,
+  "total_measurement_seconds": 724.7400554434862
+}

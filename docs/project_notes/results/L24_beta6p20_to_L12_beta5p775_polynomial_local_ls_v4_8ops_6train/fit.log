@@ -1,0 +1,210 @@
+Measuring 300 native coarse configurations at beta=5.775
+PyQUDA INFO: Using default grid mapping
+PyQUDA INFO: Using lattice size [12, 12, 12, 12] to determine grid size
+PyQUDA INFO: Using grid size [1, 1, 1, 1]
+PyQUDA INFO: Using numpy with cpu as Array API
+PyQUDA INFO: Using QUDA_RESOURCE_PATH=/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/L12_beta5p775/.quda-cache
+Disabling GPU-Direct RDMA access
+Enabling peer-to-peer copy engine and direct load/store access
+QUDA 1.1.0 (git 1.1.0-f4af6b974-sm_86)
+CUDA Driver version = 13020
+CUDA Runtime version = 12000
+Graphic driver version = 595.91.07
+Found device 0: NVIDIA GeForce RTX 3060
+Using device 0: NVIDIA GeForce RTX 3060
+Initializing monitoring on device 0 with pciBusId 0000:07:00.0: NVIDIA GeForce RTX 3060
+WARNING: Data reordering done on GPU (set with QUDA_REORDER_LOCATION=GPU/CPU)
+Loaded 51 sets of cached parameters from /home/jinchen/git/fnal/RGflow/artifacts/4dsu3/L12_beta5p775/.quda-cache/tunecache.tsv
+WARNING: Using device memory pool allocator
+WARNING: Using pinned memory pool allocator
+cublasCreated successfully
+initial coefficients=[0.021349080357132955, -0.01908027157063272, -0.002500323423535852, -0.0001571102982509985, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], perturbative residual=0.018837433930911925
+cached 10/60 training configurations
+cached 20/60 training configurations
+cached 30/60 training configurations
+cached 40/60 training configurations
+cached 50/60 training configurations
+cached 60/60 training configurations
+fit 001: loss=400572, mean z=[-457.548 -393.646 -163.52   -96.699   -0.792   -0.815], 64.8s
+fit 002: loss=3.77113e+06, mean z=[-1.683013e+03 -9.200710e+02 -2.661790e+02 -1.449090e+02 -3.710000e-01
+ -5.920000e-01], 62.2s
+fit 003: loss=393206, mean z=[-4.72206e+02 -3.65113e+02 -1.65400e+02 -9.68410e+01  1.39400e+00
+ -2.10000e-02], 62.7s
+fit 004: loss=187564, mean z=[-316.107 -257.486 -125.435  -73.868    0.647   -0.404], 63.5s
+fit 005: loss=8885.09, mean z=[-1.7754e+01 -6.7848e+01 -5.4053e+01 -3.0644e+01  3.9000e-02 -5.6900e-01], 63.3s
+fit 006: loss=136761, mean z=[-284.839 -210.574  -92.024  -52.159    0.324   -0.445], 62.5s
+fit 007: loss=3543.42, mean z=[  2.706 -40.137 -37.924 -19.745  -0.096  -0.712], 62.1s
+fit 008: loss=2403.8, mean z=[-30.449 -27.541 -23.548  -8.588   0.289  -0.561], 62.2s
+fit 009: loss=14700.3, mean z=[-86.645 -72.253 -39.285 -18.67    0.282  -0.526], 63.4s
+fit 010: loss=251.443, mean z=[  2.304  -2.348 -12.46   -1.133   0.422  -0.484], 63.4s
+fit 011: loss=2230.21, mean z=[-33.122 -26.038 -18.769  -5.01    0.195  -0.616], 65.4s
+fit 012: loss=190.131, mean z=[  1.252  -0.276 -10.327   0.461   0.404  -0.501], 62.3s
+fit 013: loss=197.606, mean z=[-5.607 -2.412 -9.008  1.57   0.292 -0.573], 61.2s
+fit 014: loss=169.587, mean z=[ 1.01   0.91  -9.259  1.258  0.404 -0.504], 66.6s
+fit 015: loss=148.399, mean z=[-1.038  1.366 -7.891  2.308  0.36  -0.534], 62.4s
+fit 016: loss=216.311, mean z=[-7.016 -3.544 -8.795  1.77   0.267 -0.58 ], 62.1s
+fit 017: loss=140.52, mean z=[-0.585  2.218 -7.097  2.884  0.345 -0.544], 63.1s
+fit 018: loss=137.128, mean z=[-1.983  1.068 -6.968  3.009  0.3   -0.566], 64.2s
+fit 019: loss=129.215, mean z=[-1.379  1.357 -6.438  3.399  0.29  -0.564], 63.0s
+fit 020: loss=139.253, mean z=[-3.511 -0.789 -6.864  3.175  0.295 -0.542], 62.2s
+fit 021: loss=125.509, mean z=[-0.63   1.957 -6.002  3.714  0.293 -0.559], 63.0s
+fit 022: loss=122.997, mean z=[-1.176  1.336 -6.005  3.745  0.296 -0.548], 62.0s
+fit 023: loss=119.604, mean z=[-0.951  1.414 -5.762  3.945  0.305 -0.532], 64.3s
+fit 024: loss=120.127, mean z=[-2.165  0.209 -6.024  3.836  0.322 -0.499], 62.6s
+fit 025: loss=117.843, mean z=[-0.546  1.714 -5.54   4.114  0.311 -0.523], 63.0s
+fit 026: loss=115.762, mean z=[-0.841  1.363 -5.557  4.136  0.319 -0.507], 63.9s
+fit 027: loss=114.652, mean z=[-1.762  0.461 -5.766  4.062  0.332 -0.474], 67.6s
+fit 028: loss=110.239, mean z=[-0.438  1.504 -5.262  4.419  0.337 -0.466], 65.9s
+fit 029: loss=108.497, mean z=[-0.631  1.297 -5.29   4.431  0.34  -0.451], 62.4s
+fit 030: loss=106.395, mean z=[-1.249  0.732 -5.45   4.384  0.341 -0.423], 62.2s
+fit 031: loss=102.866, mean z=[-1.046  0.839 -5.341  4.513  0.338 -0.398], 63.2s
+fit 032: loss=106.109, mean z=[-2.64  -0.403 -5.798  4.303  0.316 -0.358], 63.1s
+fit 033: loss=100.71, mean z=[-0.482  1.236 -5.143  4.671  0.336 -0.386], 62.7s
+fit 034: loss=98.7156, mean z=[-0.868  0.906 -5.243  4.65   0.327 -0.365], 61.9s
+fit 035: loss=98.8073, mean z=[-1.997  0.031 -5.534  4.534  0.306 -0.333], 65.1s
+fit 036: loss=97.1317, mean z=[-0.429  1.207 -5.092  4.771  0.324 -0.355], 63.5s
+fit 037: loss=95.3274, mean z=[-0.702  0.966 -5.151  4.769  0.316 -0.338], 61.5s
+fit 038: loss=93.9211, mean z=[-1.489  0.337 -5.318  4.72   0.302 -0.311], 61.3s
+fit 039: loss=89.5399, mean z=[-0.964  0.6   -5.077  4.923  0.305 -0.286], 63.0s
+fit 040: loss=90.0349, mean z=[-2.162 -0.393 -5.196  4.909  0.333 -0.247], 62.1s
+fit 041: loss=87.5308, mean z=[-0.348  0.93  -4.865  5.076  0.315 -0.274], 62.9s
+fit 042: loss=85.4813, mean z=[-0.605  0.622 -4.832  5.126  0.336 -0.252], 65.9s
+fit 043: loss=84.361, mean z=[-1.533 -0.193 -4.879  5.147  0.406 -0.201], 62.3s
+fit 044: loss=81.4296, mean z=[-1.491 -0.507 -4.768  5.245  0.556 -0.111], 63.3s
+fit 045: loss=89.5846, mean z=[-2.953 -1.923 -5.182  4.979  0.78   0.035], 61.4s
+fit 046: loss=77.4793, mean z=[-0.255  0.231 -4.38   5.503  0.615 -0.075], 61.5s
+fit 047: loss=76.9138, mean z=[-0.873 -0.374 -4.51   5.423  0.731  0.   ], 62.4s
+fit 048: loss=76.2044, mean z=[-1.163 -0.73  -4.547  5.403  0.862  0.092], 63.5s
+fit 049: loss=73.2681, mean z=[-0.088  0.078 -4.149  5.672  0.903  0.123], 62.8s
+fit 050: loss=72.5634, mean z=[-0.353 -0.191 -4.215  5.628  0.973  0.175], 63.5s
+fit 051: loss=71.7106, mean z=[-0.39  -0.274 -4.207  5.633  1.047  0.233], 62.1s
+fit 052: loss=70.8973, mean z=[-0.42  -0.343 -4.202  5.634  1.123  0.295], 63.9s
+fit 053: loss=70.1315, mean z=[-0.437 -0.396 -4.2    5.63   1.199  0.359], 61.5s
+fit 054: loss=69.3839, mean z=[-0.423 -0.418 -4.19   5.629  1.275  0.425], 62.1s
+fit 055: loss=68.614, mean z=[-0.353 -0.393 -4.158  5.639  1.347  0.488], 62.9s
+fit 056: loss=67.8522, mean z=[-0.231 -0.33  -4.098  5.663  1.41   0.546], 63.9s
+fit 057: loss=67.9596, mean z=[-0.768 -0.793 -4.217  5.53   1.501  0.626], 62.1s
+fit 058: loss=67.3658, mean z=[ 0.058 -0.131 -3.988  5.727  1.439  0.573], 62.1s
+fit 059: loss=66.8884, mean z=[-0.066 -0.266 -3.997  5.696  1.485  0.614], 63.0s
+fit 060: loss=66.5699, mean z=[-0.525 -0.66  -4.075  5.581  1.554  0.673], 62.2s
+fit 061: loss=65.3942, mean z=[-0.419 -0.632 -3.977  5.577  1.61   0.719], 61.9s
+fit 062: loss=64.3678, mean z=[-0.368 -0.637 -3.903  5.552  1.655  0.753], 62.5s
+fit 063: loss=63.3532, mean z=[-0.309 -0.632 -3.829  5.526  1.689  0.777], 66.2s
+fit 064: loss=62.3667, mean z=[-0.251 -0.627 -3.754  5.499  1.715  0.793], 62.7s
+fit 065: loss=61.421, mean z=[-0.201 -0.628 -3.68   5.472  1.734  0.802], 64.4s
+fit 066: loss=63.3181, mean z=[-1.334 -1.445 -3.887  5.184  1.752  0.804], 62.0s
+fit 067: loss=60.7174, mean z=[ 0.137 -0.425 -3.552  5.518  1.741  0.805], 61.7s
+fit 068: loss=60.103, mean z=[-0.157 -0.655 -3.579  5.423  1.75   0.806], 62.4s
+fit 069: loss=59.2266, mean z=[-0.095 -0.651 -3.494  5.403  1.754  0.803], 62.5s
+fit 070: loss=60.4495, mean z=[-1.109 -1.38  -3.662  5.145  1.752  0.789], 64.6s
+fit 071: loss=58.6582, mean z=[ 0.178 -0.497 -3.386  5.437  1.755  0.801], 61.9s
+fit 072: loss=58.0765, mean z=[-0.08  -0.699 -3.402  5.351  1.754  0.794], 62.5s
+fit 073: loss=58.8669, mean z=[-0.963 -1.335 -3.516  5.131  1.741  0.774], 61.9s
+fit 074: loss=57.5329, mean z=[ 0.207 -0.542 -3.28   5.393  1.751  0.789], 63.5s
+fit 075: loss=57.0018, mean z=[-0.051 -0.737 -3.301  5.306  1.745  0.778], 61.9s
+fit 076: loss=56.2921, mean z=[ 0.02  -0.734 -3.206  5.296  1.736  0.766], 64.4s
+fit 077: loss=57.1063, mean z=[-0.865 -1.361 -3.336  5.071  1.712  0.741], 63.1s
+fit 078: loss=55.8786, mean z=[ 0.23  -0.622 -3.119  5.316  1.731  0.76 ], 65.7s
+fit 079: loss=55.4167, mean z=[ 0.02  -0.786 -3.12   5.245  1.718  0.746], 66.5s
+fit 080: loss=55.8755, mean z=[-0.712 -1.313 -3.189  5.066  1.69   0.719], 63.8s
+fit 081: loss=55.024, mean z=[ 0.257 -0.668 -3.013  5.279  1.711  0.738], 64.9s
+fit 082: loss=54.6298, mean z=[ 0.041 -0.827 -3.025  5.204  1.695  0.724], 64.2s
+fit 083: loss=54.8675, mean z=[-0.577 -1.277 -3.057  5.054  1.664  0.697], 64.5s
+fit 084: loss=54.2787, mean z=[ 0.276 -0.713 -2.914  5.241  1.688  0.716], 64.3s
+fit 085: loss=53.9367, mean z=[ 0.076 -0.856 -2.926  5.168  1.669  0.701], 62.1s
+fit 086: loss=53.9462, mean z=[-0.417 -1.223 -2.929  5.045  1.635  0.674], 64.0s
+fit 087: loss=53.6374, mean z=[ 0.294 -0.754 -2.821  5.203  1.661  0.692], 65.0s
+fit 088: loss=53.3324, mean z=[ 0.125 -0.872 -2.829  5.138  1.64   0.677], 62.1s
+fit 089: loss=53.102, mean z=[-0.22  -1.141 -2.805  5.042  1.603  0.65 ], 63.3s
+fit 090: loss=52.2256, mean z=[ 0.031 -1.021 -2.676  5.034  1.56   0.622], 63.4s
+fit 091: loss=51.7231, mean z=[-0.312 -1.287 -2.678  4.902  1.471  0.562], 63.6s
+fit 092: loss=51.2302, mean z=[-0.585 -1.437 -2.715  4.777  1.33   0.469], 61.5s
+fit 093: loss=51.5158, mean z=[-1.03  -1.722 -2.739  4.651  1.175  0.359], 63.3s
+fit 094: loss=49.5797, mean z=[ 0.252 -0.889 -2.464  4.912  1.288  0.436], 64.5s
+fit 095: loss=49.0803, mean z=[ 0.045 -1.017 -2.498  4.831  1.203  0.379], 63.1s
+fit 096: loss=49.7943, mean z=[-0.842 -1.601 -2.65   4.606  1.045  0.274], 63.5s
+fit 097: loss=48.6247, mean z=[ 0.266 -0.875 -2.416  4.851  1.16   0.349], 64.1s
+fit 098: loss=48.0768, mean z=[ 0.069 -1.    -2.439  4.771  1.076  0.295], 61.7s
+fit 099: loss=48.2906, mean z=[-0.704 -1.51  -2.565  4.548  0.92   0.196], 62.2s
+fit 100: loss=47.6273, mean z=[ 0.277 -0.862 -2.364  4.784  1.033  0.267], 62.4s
+Frozen checkpoint: The maximum number of function evaluations is exceeded.
+evaluated 10/300 configurations (all eight operators)
+evaluated 20/300 configurations (all eight operators)
+evaluated 30/300 configurations (all eight operators)
+evaluated 40/300 configurations (all eight operators)
+evaluated 50/300 configurations (all eight operators)
+evaluated 60/300 configurations (all eight operators)
+evaluated 70/300 configurations (all eight operators)
+evaluated 80/300 configurations (all eight operators)
+evaluated 90/300 configurations (all eight operators)
+evaluated 100/300 configurations (all eight operators)
+evaluated 110/300 configurations (all eight operators)
+evaluated 120/300 configurations (all eight operators)
+evaluated 130/300 configurations (all eight operators)
+evaluated 140/300 configurations (all eight operators)
+evaluated 150/300 configurations (all eight operators)
+evaluated 160/300 configurations (all eight operators)
+evaluated 170/300 configurations (all eight operators)
+evaluated 180/300 configurations (all eight operators)
+evaluated 190/300 configurations (all eight operators)
+evaluated 200/300 configurations (all eight operators)
+evaluated 210/300 configurations (all eight operators)
+evaluated 220/300 configurations (all eight operators)
+evaluated 230/300 configurations (all eight operators)
+evaluated 240/300 configurations (all eight operators)
+evaluated 250/300 configurations (all eight operators)
+evaluated 260/300 configurations (all eight operators)
+evaluated 270/300 configurations (all eight operators)
+evaluated 280/300 configurations (all eight operators)
+evaluated 290/300 configurations (all eight operators)
+evaluated 300/300 configurations (all eight operators)
+Cross-checking three held-out configurations with full-map PyQUDA
+Complete: {"training": {"test_all_means_within_one_standard_error": false, "test_all_means_within_one_target_sigma": true, "test_all_std_ratios_within_20_percent": false, "distribution_match": false}, "held_out": {"test_all_means_within_one_standard_error": false, "test_all_means_within_one_target_sigma": false, "test_all_std_ratios_within_20_percent": true, "distribution_match": false}, "all": {"test_all_means_within_one_standard_error": false, "test_all_means_within_one_target_sigma": false, "test_all_std_ratios_within_20_percent": false, "distribution_match": false}}
+WARNING: Environment variable QUDA_PROFILE_OUTPUT_BASE not set; writing to profile.tsv and profile_async.tsv
+Saving 18 sets of cached parameters to /home/jinchen/git/fnal/RGflow/artifacts/4dsu3/L12_beta5p775/.quda-cache/profile_0.tsv
+Saving 0 sets of cached profiles to /home/jinchen/git/fnal/RGflow/artifacts/4dsu3/L12_beta5p775/.quda-cache/profile_async_0.tsv
+
+               initQuda Total time =     0.118 secs
+                     init     =     0.118 secs ( 99.991%),	 with        2 calls at 5.892e+04 us per call
+        total accounted       =     0.118 secs ( 99.991%)
+        total missing         =     0.000 secs (  0.009%)
+
+          loadGaugeQuda Total time =     5.944 secs
+                 download     =     5.263 secs ( 88.547%),	 with     3030 calls at 1.737e+03 us per call
+                     init     =     0.008 secs (  0.134%),	 with    30299 calls at 2.632e-01 us per call
+                  compute     =     0.000 secs (  0.008%),	 with     3030 calls at 1.584e-01 us per call
+                    comms     =     0.478 secs (  8.050%),	 with     3029 calls at 1.580e+02 us per call
+                     free     =     0.001 secs (  0.020%),	 with     3029 calls at 3.849e-01 us per call
+        total accounted       =     5.751 secs ( 96.759%)
+        total missing         =     0.193 secs (  3.241%)
+
+   gaugeObservablesQuda Total time =     3.413 secs
+                     init     =     0.000 secs (  0.005%),	 with        1 calls at 1.870e+02 us per call
+                  compute     =     3.388 secs ( 99.253%),	 with     3030 calls at 1.118e+03 us per call
+                    comms     =     0.000 secs (  0.002%),	 with        1 calls at 7.300e+01 us per call
+        total accounted       =     3.388 secs ( 99.260%)
+        total missing         =     0.025 secs (  0.740%)
+
+                endQuda Total time =     0.004 secs
+                     free     =     0.000 secs (  0.067%),	 with        1 calls at 3.000e+00 us per call
+        total accounted       =     0.000 secs (  0.067%)
+        total missing         =     0.004 secs ( 99.933%)
+
+       initQuda-endQuda Total time =  8611.142 secs
+
+                   QUDA Total time =     9.478 secs
+                 download     =     5.263 secs ( 55.527%),	 with     3030 calls at 1.737e+03 us per call
+                     init     =     0.127 secs (  1.335%),	 with    30302 calls at 4.176e+00 us per call
+                  compute     =     3.388 secs ( 35.745%),	 with     6060 calls at 5.591e+02 us per call
+                    comms     =     0.478 secs (  5.047%),	 with     3030 calls at 1.579e+02 us per call
+                     free     =     0.001 secs (  0.011%),	 with     3030 calls at 3.380e-01 us per call
+        total accounted       =     9.257 secs ( 97.666%)
+        total missing         =     0.221 secs (  2.334%)
+
+Device memory used = 38.9 MiB
+Pinned device memory used = 0.0 MiB
+Managed memory used = 0.0 MiB
+Shmem memory used = 0.0 MiB
+Page-locked host memory used = 3.8 MiB
+Total host memory used >= 3.8 MiB
+

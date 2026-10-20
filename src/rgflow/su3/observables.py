@@ -86,47 +86,60 @@ def _polyakov_mean(links: torch.Tensor, direction: int) -> torch.Tensor:
     return trace.mean(dim=tuple(range(1, trace.ndim))) if links.ndim == 8 else trace.mean()
 
 
-def observable_vector_torch(links: torch.Tensor, *, checkpoint_loops: bool = False) -> torch.Tensor:
-    """Return plaquette, 1x2 rectangle, 2x2 square, and Polyakov second moment."""
-    plaquettes = []
-    rectangles = []
-    squares = []
-    polyakov = []
-    for mu in range(4):
-        for nu in range(mu + 1, 4):
-            plaquettes.append(_loop_mean(links, (mu, nu, mu + 4, nu + 4), checkpoint_path=checkpoint_loops))
-            squares.append(
-                _loop_mean(links, (mu, mu, nu, nu, mu + 4, mu + 4, nu + 4, nu + 4), checkpoint_path=checkpoint_loops)
-            )
-        polyakov_mean = checkpoint(_polyakov_mean, links, mu, use_reentrant=False) if checkpoint_loops else _polyakov_mean(links, mu)
-        polyakov.append(torch.abs(polyakov_mean) ** 2)
-        for nu in range(4):
-            if mu != nu:
-                rectangles.append(
-                    _loop_mean(links, (mu, mu, nu, mu + 4, mu + 4, nu + 4), checkpoint_path=checkpoint_loops)
-                )
-    if links.ndim == 8:
-        return torch.stack(
-            (
-                torch.stack(plaquettes).mean(dim=0),
-                torch.stack(rectangles).mean(dim=0),
-                torch.stack(squares).mean(dim=0),
-                torch.stack(polyakov).mean(dim=0),
-            ),
-            dim=1,
-        )
-    return torch.stack(
-        (
-            torch.stack(plaquettes).mean(),
-            torch.stack(rectangles).mean(),
-            torch.stack(squares).mean(),
-            torch.stack(polyakov).mean(),
-        )
-    )
+# The default stays compatible with archived four-observable experiments.
+LEGACY_OBSERVABLES = ("plaquette", "rectangle_1x2", "square_2x2", "polyakov_abs2")
+DOWNSAMPLING_OBSERVABLES = (
+    "plaquette", "rectangle_1x2", "rectangle_1x3", "square_2x2",
+    "rectangle_2x3", "square_3x3", "polyakov_abs2", "polyakov_abs4",
+)
+TRAINING_OBSERVABLES = tuple(
+    name for name in DOWNSAMPLING_OBSERVABLES
+    if name not in ("rectangle_1x3", "square_2x2")
+)
+LOOP_SHAPES = {
+    "plaquette": (1, 1), "rectangle_1x2": (1, 2),
+    "rectangle_1x3": (1, 3), "square_2x2": (2, 2),
+    "rectangle_2x3": (2, 3), "square_3x3": (3, 3),
+}
+
+
+def _wilson_paths(rows: int, columns: int) -> list[tuple[int, ...]]:
+    return [
+        (mu,) * columns + (nu,) * rows + (mu + 4,) * columns + (nu + 4,) * rows
+        for mu in range(4) for nu in range(4)
+        if mu < nu or (rows != columns and mu != nu)
+    ]
+
+
+def observable_vector_torch(
+    links: torch.Tensor, *, names: Sequence[str] | None = None,
+    checkpoint_loops: bool = False,
+) -> torch.Tensor:
+    """Measure selected orientation-averaged loops and global Polyakov moments."""
+    names = LEGACY_OBSERVABLES if names is None else tuple(names)
+    polyakov_abs2 = None
+    if any(name.startswith("polyakov_") for name in names):
+        means = [
+            checkpoint(_polyakov_mean, links, mu, use_reentrant=False)
+            if checkpoint_loops else _polyakov_mean(links, mu)
+            for mu in range(4)
+        ]
+        polyakov_abs2 = torch.stack(means).abs().square()
+    values = []
+    for name in names:
+        if name.startswith("polyakov_"):
+            moment = polyakov_abs2 if name == "polyakov_abs2" else polyakov_abs2.square()
+            values.append(moment.mean(dim=0))
+            continue
+        paths = _wilson_paths(*LOOP_SHAPES[name])
+        values.append(torch.stack([
+            _loop_mean(links, path, checkpoint_path=checkpoint_loops) for path in paths
+        ]).mean(dim=0))
+    return torch.stack(values, dim=-1)
 
 
 def observable_names() -> tuple[str, ...]:
-    return ("plaquette", "rectangle_1x2", "square_2x2", "polyakov_abs2")
+    return LEGACY_OBSERVABLES
 
 
 def _polyakov_direction_pyquda(gauge, direction: int) -> complex:
@@ -148,24 +161,23 @@ def _polyakov_direction_pyquda(gauge, direction: int) -> complex:
     return complex(float(value[0]), float(value[1]))
 
 
-def observable_vector_pyquda(gauge) -> np.ndarray:
-    """Measure the four observables with PyQUDA's native gauge routines."""
-    lattice = tuple(int(value) for value in gauge.latt_info.global_size)
-    volume = int(np.prod(lattice))
-    plaquette = float(gauge.plaquette()[0])
-    rectangles = []
-    squares = []
-    for mu in range(4):
-        for nu in range(mu + 1, 4):
-            squares.append([mu, mu, nu, nu, mu + 4, mu + 4, nu + 4, nu + 4])
-        for nu in range(4):
-            if mu != nu:
-                rectangles.append([mu, mu, nu, mu + 4, mu + 4, nu + 4])
-    rectangle_values = gauge.loopTrace(rectangles).real / (3.0 * volume)
-    square_values = gauge.loopTrace(squares).real / (3.0 * volume)
-    polyakov_values = [_polyakov_direction_pyquda(gauge, direction) for direction in range(4)]
-    polyakov_abs2 = float(np.mean(np.abs(np.asarray(polyakov_values) / 3.0) ** 2))
-    return np.asarray(
-        [plaquette, float(rectangle_values.mean()), float(square_values.mean()), polyakov_abs2],
-        dtype=np.float64,
-    )
+def observable_vector_pyquda(gauge, *, names: Sequence[str] | None = None) -> np.ndarray:
+    """Measure the same selected observables with native PyQUDA routines."""
+    names = LEGACY_OBSERVABLES if names is None else tuple(names)
+    volume = int(np.prod(gauge.latt_info.global_size))
+    polyakov_abs2 = None
+    if any(name.startswith("polyakov_") for name in names):
+        means = np.asarray([_polyakov_direction_pyquda(gauge, mu) for mu in range(4)]) / 3.0
+        polyakov_abs2 = np.abs(means) ** 2
+    values = []
+    for name in names:
+        if name.startswith("polyakov_"):
+            moment = polyakov_abs2 if name == "polyakov_abs2" else polyakov_abs2 ** 2
+            values.append(float(moment.mean()))
+            continue
+        if name == "plaquette":
+            values.append(float(gauge.plaquette()[0]))
+            continue
+        paths = [list(path) for path in _wilson_paths(*LOOP_SHAPES[name])]
+        values.append(float((gauge.loopTrace(paths).real / (3.0 * volume)).mean()))
+    return np.asarray(values, dtype=np.float64)

@@ -1,0 +1,9 @@
+{
+  "scripts/downsample/fit_polynomial.py": "88ddd8e2442a4ca83adafce8b3823863f3ce9aa50f7c4f539cc192c87931b8d1",
+  "src/rgflow/su3/observables.py": "b5a6c0137ae31e792ca7535b042a6e97045c5170a7af405cecafcb23d73ec5b0",
+  "src/rgflow/su3/training.py": "686c0c5f38d298543362379b7251698b403e5dc82af6f9e65a8c3c5141fcbb30",
+  "src/rgflow/su3/downsampling.py": "02b6d5a21b798bfaadc5396fe63e02fa327719bf9d16acc08da4042ad7475901",
+  "src/rgflow/su3/perfect_blocking.py": "f641c082066c0a25bdf00f78e81ea3480a47babd8f39c138eb5d51ae977d6e65",
+  "src/rgflow/su3/linalg.py": "3ced011955f88df20081f744e134a38cad03b277a58ec5ea3c10136b910be43e",
+  "src/rgflow/su3/io.py": "f530661f99244aef53351aba56b922d2e22bb6d58e06efb4e8ec3d450ab6243f"
+}

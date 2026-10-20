@@ -1,0 +1,31 @@
+{
+  "basis_backend": "four concurrent CPU configurations, two Torch threads per worker",
+  "discarded_gpu_basis_attempt": "stopped before any objective evaluation; original arguments, sources and log archived in attempts/gpu_basis",
+  "initialization": "fresh perturbative degree-four polynomial, zero hooks and local terms",
+  "training_operators": [
+    "plaquette",
+    "rectangle_1x2",
+    "rectangle_2x3",
+    "square_3x3",
+    "polyakov_abs2",
+    "polyakov_abs4"
+  ],
+  "held_out_operators": [
+    "rectangle_1x3",
+    "square_2x2"
+  ],
+  "test_targets_used_for_fitting": false,
+  "jacobian_backend": "separate scalar operator graphs sharing the blocked field; physical-field values/Jacobians exactly equal to stacked backward, 14.12s versus 5.54s in timing probe",
+  "discarded_stacked_backward_attempt": "stopped during basis preparation, before any objective evaluation; archive in attempts/stacked_backward",
+  "frozen_checkpoint_sha256_before_evaluation": "b28a519dbc839166b5df3455e85c9e58b3f0c06ce637bc1db961fd2393a6643e",
+  "report_statistics": "float64 accumulation of saved raw measurements after freezing; parameters unchanged",
+  "fit_seconds": 6316.370759987272,
+  "frozen_checkpoint_sha256": "b28a519dbc839166b5df3455e85c9e58b3f0c06ce637bc1db961fd2393a6643e",
+  "final_evaluation": {
+    "configurations": 300,
+    "device": "cpu",
+    "workers": 4,
+    "pyquda_test_configurations": 3,
+    "checkpoint_changed": false
+  }
+}

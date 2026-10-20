@@ -21,17 +21,25 @@ selected_run = (json.loads(selection.read_text())['run'] if selection.exists()
                 else 'L12_to_L24_2flow_equivariant_v2')
 parser.add_argument('--upsampling-run', type=Path,
                     default=ROOT/'artifacts/4dsu3/upsample'/selected_run)
+down_selection = json.loads((HERE/'results/selected_downsampling_run.json').read_text())
+parser.add_argument('--downsampling-run', type=Path,
+                    default=ROOT/'artifacts/4dsu3/downsample'/down_selection['run'])
+parser.add_argument('--coarse-ensemble', default=down_selection['coarse_ensemble'])
+parser.add_argument('--downsampling-only', action='store_true', help='rebuild reference and downsampling figures without regenerating upsampling figures')
 args = parser.parse_args()
 DATA, FIGS = HERE/'results', HERE/'figs'
 DATA.mkdir(exist_ok=True)
 FIGS.mkdir(exist_ok=True)
-down_name = 'L24_beta6p20_to_L12_beta5p80_polynomial_local_ls_v2'
+down_name = args.downsampling_run.name
 up_name = args.upsampling_run.name
 if args.refresh_data:
     groups = {
         'L24_beta6p20': ['ensemble.json', 'static_potential.json', 'static_potential.npz', 'autocorrelation.json'],
-        'L12_beta5p80': ['ensemble.json', 'static_potential.json', 'static_potential.npz', 'autocorrelation.json'],
-        'downsample/'+down_name: ['kernel.json', 'kernel.pt', 'metrics.json', 'fit_history.json', 'observable_distributions.npz'],
+        args.coarse_ensemble: ['ensemble.json', 'static_potential.json', 'static_potential.npz', 'autocorrelation.json'],
+        'downsample/'+down_name: ['kernel.json', 'kernel.pt', 'metrics.json', 'fit_history.json', 'observable_distributions.npz',
+                                 'source_hashes.json', 'environment.json', 'training_arguments.json', 'provenance.json',
+                                 'execution_notes.json', 'gpu_attempt_history.json', 'gpu_attempt_source_hashes.json',
+                                 'backend_crosscheck.json', 'evaluate_source.py', 'fit.log'],
         'upsample/'+up_name: ['run.json', 'metrics.json', 'history.json', 'observable_distributions.npz',
                              'calibration_stage1.json', 'calibration_stage2.json', 'training_arguments.json',
                              'training_invocations.json', 'execution_notes.json', 'numerics.json', 'validation.log', 'environment.json', 'flows.pt',
@@ -42,6 +50,8 @@ if args.refresh_data:
     }
     if up_name != 'L12_to_L24_2flow_v1':
         groups['upsample/L12_to_L24_2flow_v1'] = ['run.json', 'metrics.json', 'observable_distributions.npz']
+    if args.downsampling_only:
+        groups = {key: value for key, value in groups.items() if not key.startswith('upsample/')}
     for group, names in groups.items():
         destination = DATA/group.split('/')[-1]
         destination.mkdir(exist_ok=True)
@@ -63,7 +73,7 @@ def save(fig, name):
 
 
 fig, axes = plt.subplots(1, 2, figsize=(10, 3.7), layout='constrained')
-for tag, color in zip(['L24_beta6p20', 'L12_beta5p80'], COLORS[1:]):
+for tag, color in zip(['L24_beta6p20', args.coarse_ensemble], COLORS[1:]):
     d = json.loads((DATA/tag/'static_potential.json').read_text())
     x = np.array([p['r_over_a'] for p in d['potential']])
     y = np.array([p['aV'] for p in d['potential']])
@@ -83,7 +93,7 @@ axes[1].set(xticks=[0, 1], xticklabels=[r'$r_0=0.5$ fm', r'$\sqrt{\sigma}=440$ M
 save(fig, 'reference_scales')
 
 fig, axes = plt.subplots(2, 2, figsize=(10, 6), layout='constrained')
-for row, tag in enumerate(['L24_beta6p20', 'L12_beta5p80']):
+for row, tag in enumerate(['L24_beta6p20', args.coarse_ensemble]):
     d = json.loads((DATA/tag/'ensemble.json').read_text())
     p = np.array([x['plaquette'] for x in d['configurations']])
     axes[row, 0].plot(np.arange(len(p)), (p-p.mean())/p.std(ddof=1), lw=.7, color=COLORS[row+1])
@@ -118,30 +128,49 @@ ax.text(5, .1, 'Flow 1: B(Vgenerated) = C. Flow 2: learned transport, not an exa
 save(fig, 'workflow')
 
 down = DATA/down_name
+down_kernel = json.loads((down/'kernel.json').read_text())
+down_metrics = json.loads((down/'metrics.json').read_text())
+down_names = down_metrics['observables']
+training_names = down_kernel.get('training_observables', down_names)
+loop_labels = {'plaquette': r'$W_{1\times1}$', 'polyakov_abs2': r'$|P|^2$', 'polyakov_abs4': r'$|P|^4$'}
+for name in down_names:
+    if name not in loop_labels:
+        size = name.rsplit('_', 1)[1].replace('x', r'\times')
+        loop_labels[name] = '$W_{'+size+'}$'
 history = json.loads((down/'fit_history.json').read_text())
 fig, axes = plt.subplots(1, 2, figsize=(10, 3.6), layout='constrained')
 axes[0].semilogy([r['evaluation'] for r in history], [r['loss'] for r in history], color=COLORS[1])
 axes[0].set(xlabel='Objective evaluation', ylabel='Sum of squared scaled residuals', title='60-configuration local-polynomial fit')
-for i, name in enumerate(NAMES):
-    axes[1].plot([r['evaluation'] for r in history], [r['mean_residual'][i] for r in history], label=name)
+for i, name in enumerate(training_names):
+    axes[1].plot([r['evaluation'] for r in history], [r['mean_residual'][i] for r in history], label=loop_labels[name])
 axes[1].set(xlabel='Objective evaluation', ylabel='Scaled training mean residual'); axes[1].legend()
 axes[1].set_yscale('symlog', linthresh=1.)
 save(fig, 'downsampling_fit')
 
 d = np.load(down/'observable_distributions.npz')
-fig, axes = plt.subplots(2, 2, figsize=(10, 6), layout='constrained')
+columns = (len(down_names) + 1) // 2
+fig, axes = plt.subplots(2, columns, figsize=(10, 6), layout='constrained')
 for i, ax in enumerate(axes.flat):
+    if i >= len(down_names):
+        ax.axis('off')
+        continue
     ref = d['reference_test'][:, i]; mean, sigma = ref.mean(), ref.std(ddof=1)
     arrays = [(d[k][:, i]-mean)/sigma for k in ['reference_test', 'trained_test']]
     bins = np.histogram_bin_edges(np.concatenate(arrays), bins=22)
     for a, label, color in zip(arrays, ['Native L12', 'Fitted polynomial'], [COLORS[0], COLORS[2]]):
         ax.hist(a, bins=bins, density=True, histtype='step', lw=1.6, color=color, label=label)
     baseline_shift = (d['baseline_test'][:, i].mean()-mean)/sigma
-    ax.text(.03, .94, f'Naive-blocking mean: {baseline_shift:+.1f} σ', transform=ax.transAxes,
+    ax.text(.03, .94, f'Naive mean: {baseline_shift:+.1f} σ', transform=ax.transAxes,
             va='top', fontsize=9, color=COLORS[1],
             bbox={'facecolor': 'white', 'edgecolor': 'none', 'alpha': .85, 'pad': 2})
-    ax.set(title=NAMES[i], xlabel='(Operator − target mean) / target σ', ylabel='Density'); ax.legend(fontsize=10)
+    role = 'training' if down_names[i] in training_names else 'HELD OUT'
+    ax.set(title=loop_labels[down_names[i]]+' ['+role+']', xlabel=r'$(O-\langle O\rangle_{\rm ref})/\sigma_{\rm ref}$', ylabel='Density')
+handles, legend_labels = axes.flat[0].get_legend_handles_labels()
+fig.legend(handles, legend_labels, loc='outside upper center', ncols=2, frameon=False)
 save(fig, 'downsampling_distributions')
+
+if args.downsampling_only:
+    raise SystemExit(0)
 
 up = DATA/up_name
 if not (up/'metrics.json').exists():
@@ -196,8 +225,12 @@ for row, (candidate, reference, label) in enumerate([
         ax.legend(fontsize=11)
 save(fig, 'upsampling_distributions')
 
-fig, axes = plt.subplots(2, 2, figsize=(10, 6), layout='constrained')
+columns = (len(down_names) + 1) // 2
+fig, axes = plt.subplots(2, columns, figsize=(10, 6), layout='constrained')
 for i, ax in enumerate(axes.flat):
+    if i >= len(down_names):
+        ax.axis('off')
+        continue
     ref = d['fine_reference'][:, i]
     mean, sigma = ref.mean(), ref.std(ddof=1)
     target = (ref-mean)/sigma

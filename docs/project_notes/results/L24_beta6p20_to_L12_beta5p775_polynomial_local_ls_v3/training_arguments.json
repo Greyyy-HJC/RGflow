@@ -1,0 +1,17 @@
+{
+  "fine_dir": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/L24_beta6p20",
+  "coarse_dir": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/L12_beta5p775",
+  "initial_run": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/downsample/L24_beta6p20_to_L12_beta5p80_polynomial_local_ls_v2",
+  "reference_run": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/downsample/L24_beta6p20_to_L12_beta5p80_polynomial_local_ls_v2",
+  "output": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/downsample/L24_beta6p20_to_L12_beta5p775_polynomial_local_ls_v3",
+  "hook": true,
+  "local": true,
+  "train_configs": 60,
+  "max_nfev": 40,
+  "seed": 1234,
+  "device": "cuda",
+  "pyquda_check": true,
+  "command": ".venv/bin/python scripts/downsample/fit_polynomial.py --hook --local --initial-run artifacts/4dsu3/downsample/L24_beta6p20_to_L12_beta5p80_polynomial_local_ls_v2 --train-configs 60 --max-nfev 40 --pyquda-check --workers 4",
+  "workers": 4,
+  "moment_device": "cpu"
+}

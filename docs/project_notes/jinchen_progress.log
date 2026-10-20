@@ -427,15 +427,29 @@ File: figs//reference_scales.pdf Graphic file (type pdf)
  [1] [2]
 File: figs//downsampling_distributions.pdf Graphic file (type pdf)
 <use figs//downsampling_distributions.pdf>
- [3] [4]
+ [3] [4] [5]
 File: figs//upsampling_training.pdf Graphic file (type pdf)
 <use figs//upsampling_training.pdf>
- [5]
+ [6]
 File: figs//upsampling_stage_distributions.pdf Graphic file (type pdf)
 <use figs//upsampling_stage_distributions.pdf>
- [6] (jinchen_progress.bbl) [7]
-(jinchen_progress.aux)
+ [7] [8]
+File: figs//topo_charge_flow_300.pdf Graphic file (type pdf)
+<use figs//topo_charge_flow_300.pdf>
+File: figs//topo_charge_reference_history.pdf Graphic file (type pdf)
+<use figs//topo_charge_reference_history.pdf>
+File: figs//topo_charge_smeared_flow_300.pdf Graphic file (type pdf)
+<use figs//topo_charge_smeared_flow_300.pdf>
+ [9] [10]
+File: figs//plaquette_hmc_300.pdf Graphic file (type pdf)
+<use figs//plaquette_hmc_300.pdf>
+File: figs//topo_charge_hmc_flow.pdf Graphic file (type pdf)
+<use figs//topo_charge_hmc_flow.pdf>
+File: figs//topo_charge_hmc_history.pdf Graphic file (type pdf)
+<use figs//topo_charge_hmc_history.pdf>
+ [11]
+(jinchen_progress.bbl) [12] (jinchen_progress.aux)
 Package rerunfilecheck Info: File `jinchen_progress.out' has not changed.
-(rerunfilecheck)             Checksum: 1ECADE60CD459E5FB1B056FD47E3E736;2603.
+(rerunfilecheck)             Checksum: D1C3BA380ACDA05C767721C76E417473;3196.
  )
-Output written on jinchen_progress.xdv (7 pages, 43692 bytes).
+Output written on jinchen_progress.xdv (12 pages, 54300 bytes).

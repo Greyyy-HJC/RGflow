@@ -1,0 +1,108 @@
+{
+  "initial_field_controls": {
+    "source_index": 299,
+    "source_sha256": "ac3f10c76e93300fcaf6ac29e4cb5647f7c992faf93088584f1b25eeefe48e4c",
+    "plaquette": 0.61360078640831,
+    "action_normalization_residual": 0.0,
+    "trials": [
+      {
+        "md_steps": 25,
+        "seed": 20261015,
+        "delta_h": 1.1067507434636354,
+        "acceptance_probability": 0.33063152425639675,
+        "forward_seconds": 9.478158391080797,
+        "reversibility_gauge_max_error": 2.6741414356627313e-11,
+        "reversibility_momentum_max_error": 7.293854409340383e-11
+      },
+      {
+        "md_steps": 25,
+        "seed": 20261016,
+        "delta_h": 0.5685707638040185,
+        "acceptance_probability": 0.5663342860055111,
+        "forward_seconds": 3.085850825998932,
+        "reversibility_gauge_max_error": 3.017968069112407e-11,
+        "reversibility_momentum_max_error": 7.380899483180187e-11
+      },
+      {
+        "md_steps": 25,
+        "seed": 20261017,
+        "delta_h": 0.5810969099402428,
+        "acceptance_probability": 0.5592845451965177,
+        "forward_seconds": 3.022142681060359,
+        "reversibility_gauge_max_error": 1.2365502583441201e-11,
+        "reversibility_momentum_max_error": 2.818484334810023e-11
+      },
+      {
+        "md_steps": 50,
+        "seed": 20261015,
+        "delta_h": 0.21032449137419462,
+        "acceptance_probability": 0.8103212610447892,
+        "forward_seconds": 5.861934501910582,
+        "reversibility_gauge_max_error": 3.482130077654882e-11,
+        "reversibility_momentum_max_error": 1.0471101763442903e-10
+      },
+      {
+        "md_steps": 50,
+        "seed": 20261016,
+        "delta_h": 0.07580332644283772,
+        "acceptance_probability": 0.9269985047255888,
+        "forward_seconds": 5.840156510937959,
+        "reversibility_gauge_max_error": 1.1229979995600667e-11,
+        "reversibility_momentum_max_error": 3.3226310591771835e-11
+      },
+      {
+        "md_steps": 50,
+        "seed": 20261017,
+        "delta_h": 0.0771432276815176,
+        "acceptance_probability": 0.9257572500458996,
+        "forward_seconds": 5.851888033095747,
+        "reversibility_gauge_max_error": 3.441480706863916e-11,
+        "reversibility_momentum_max_error": 9.518802412955552e-11
+      }
+    ],
+    "projection_tolerance": 2e-15
+  },
+  "resume_control": {
+    "plaquette_max_difference": 0.0,
+    "delta_h_max_difference": 0.0,
+    "gauge_max_difference": 0.0,
+    "accepted_decisions_identical": true,
+    "rng_states_identical": true
+  },
+  "scope": "Projected HMC, initial reference index 299; three momenta per MD-step count; interrupted versus continuous two-trajectory comparison. Production diagnostics are separate.",
+  "projected_two_trajectory_checkpoint": {
+    "max_unitarity_error": 1.3322676295501878e-15,
+    "max_determinant_error": 1.350644602892852e-15
+  },
+  "production_checkpoint_check": {
+    "trajectory": 100,
+    "max_unitarity_error": 1.1102230246251565e-15,
+    "max_determinant_error": 1.3348671786163112e-15
+  },
+  "production_final_checkpoint_check": {
+    "trajectory": 300,
+    "max_unitarity_error": 1.1102230246251565e-15,
+    "max_determinant_error": 1.3334236103572998e-15
+  },
+  "production_chain_checks": {
+    "trajectories": 300,
+    "plaquette_values_including_initial": 301,
+    "saved_configurations": 30,
+    "accepted_trajectories": 265,
+    "rejections_preserve_plaquette": true,
+    "all_hamiltonian_differences_finite": true
+  },
+  "flow_checks": {
+    "configurations": 30,
+    "flow_time_points": 51,
+    "all_charges_and_energies_finite": true,
+    "snapshot_plaquettes_match_chain": true,
+    "snapshot_hashes_match_manifest": true,
+    "source_reference_unchanged": true
+  },
+  "notebook_checks": {
+    "executed_code_cells": 14,
+    "inline_total_figures": 6,
+    "errors": 0
+  }
+}

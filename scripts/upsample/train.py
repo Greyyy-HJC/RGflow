@@ -16,7 +16,9 @@ from scipy.stats import ks_2samp, wasserstein_distance
 
 from rgflow.su3.downsampling import PolynomialStoutKernel, block_links, su3_errors
 from rgflow.su3.io import read_nersc_gauge
-from rgflow.su3.observables import observable_names, observable_vector_torch
+from rgflow.su3.observables import (
+    DOWNSAMPLING_OBSERVABLES, TRAINING_OBSERVABLES, observable_vector_torch,
+)
 from rgflow.su3.training import (
     _covariance_inverse, _loss_coefficients, _metric_record, _stats, _write_json,
     distribution_acceptance, ensemble_paths, split_indices,
@@ -28,8 +30,9 @@ from rgflow.su3.upsampling import (
 
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS = ROOT / "artifacts" / "4dsu3"
-DEFAULT_DOWN = ARTIFACTS / "downsample" / "L24_beta6p20_to_L12_beta5p80_polynomial_local_ls_v2"
-DEFAULT_RUN = ARTIFACTS / "upsample" / "L12_to_L24_2flow_equivariant_v2"
+DEFAULT_DOWN = ARTIFACTS / "downsample" / "L24_beta6p20_to_L12_beta5p775_polynomial_local_ls_v4_8ops_6train"
+DEFAULT_RUN = ARTIFACTS / "upsample" / "L12_to_L24_2flow_v6_8ops_6train"
+TRAINING_COLUMNS = [DOWNSAMPLING_OBSERVABLES.index(name) for name in TRAINING_OBSERVABLES]
 
 
 def load_links(path, device):
@@ -39,16 +42,21 @@ def load_links(path, device):
 def moment_loss(values, reference, args):
     # Per-target-sigma mean loss + log-width loss. Float64 reductions resolve
     # the narrow L24 distributions without subtractive float32 cancellation.
+    reference = reference[:, TRAINING_COLUMNS].astype(np.float64)
+    variance = reference.var(0, ddof=1)
+    epsilon = 1.e-12 * variance
     if args.mean_metric == "diagonal":
-        inverse = np.diag(1./reference.astype(np.float64).var(0, ddof=1))
+        inverse = np.diag(1./variance)
     else:
-        _, inverse = _covariance_inverse(reference, reference, .1)
-    mean, _, log_variance = _stats(reference)
+        _, inverse = _covariance_inverse(reference, reference, .1, observable_scale=np.sqrt(variance))
+    mean, _, log_variance = _stats(reference, epsilon)
     return _loss_coefficients(
         values.double(), torch.as_tensor(mean, device=values.device),
         torch.as_tensor(log_variance, device=values.device),
         torch.as_tensor(inverse, device=values.device),
-        torch.full((4,), args.variance_weight**-.5, dtype=torch.float64, device=values.device),
+        torch.full((len(TRAINING_OBSERVABLES),), args.variance_weight**-.5,
+                   dtype=torch.float64, device=values.device),
+        variance_epsilon=torch.as_tensor(epsilon, device=values.device),
     )
 
 
@@ -135,7 +143,7 @@ def fit_smeared_operators(flow1, train_ids, val_ids, smeared_field, reference, d
                 coarse = block_links(smeared_field(index))
                 generator = torch.Generator(device=device).manual_seed(args.seed+50000+index)
                 field, _ = flow1.sample(coarse, generator=generator, compute_logdet=False)
-                values.append(observable_vector_torch(field))
+                values.append(observable_vector_torch(field, names=TRAINING_OBSERVABLES))
         return moment_loss(torch.stack(values), reference["validation"]["smeared"], args)[1]["loss"]
 
     best_loss = validation_loss()
@@ -154,7 +162,7 @@ def fit_smeared_operators(flow1, train_ids, val_ids, smeared_field, reference, d
                 field, _ = flow1(base, compute_logdet=False)
                 inputs.append(base.cpu())
                 fields.append(field.cpu())
-                values.append(observable_vector_torch(field))
+                values.append(observable_vector_torch(field, names=TRAINING_OBSERVABLES))
         del base, field
         coefficients, losses = moment_loss(torch.stack(values), reference["train"]["smeared"], args)
         optimizer.zero_grad(set_to_none=True)
@@ -162,7 +170,7 @@ def fit_smeared_operators(flow1, train_ids, val_ids, smeared_field, reference, d
             field = source.to(device)
             field.requires_grad_(True)
             gradient = torch.autograd.grad(
-                (observable_vector_torch(field, checkpoint_loops=True).double()*coefficients[row].detach()).sum(), field
+                (observable_vector_torch(field, names=TRAINING_OBSERVABLES, checkpoint_loops=True).double()*coefficients[row].detach()).sum(), field
             )[0]
             del field
             flow1.train()
@@ -284,7 +292,7 @@ def fit_fine_operators(flow1, flow2, train_ids, val_ids, smeared_field, referenc
             for index in val_ids:
                 smeared = generated_input(index, args.seed+20000+index)
                 fine, _ = flow2(smeared, compute_logdet=False)
-                values.append(observable_vector_torch(fine))
+                values.append(observable_vector_torch(fine, names=TRAINING_OBSERVABLES))
         return moment_loss(torch.stack(values), reference["validation"]["fine"], args)[1]["loss"]
 
     best_loss = validation_loss()
@@ -304,7 +312,7 @@ def fit_fine_operators(flow1, flow2, train_ids, val_ids, smeared_field, referenc
                 fine, _ = flow2(smeared, compute_logdet=False)
                 inputs.append(smeared.cpu())
                 fields.append(fine.cpu())
-                values.append(observable_vector_torch(fine))
+                values.append(observable_vector_torch(fine, names=TRAINING_OBSERVABLES))
         del smeared, fine
         coefficients, losses = moment_loss(torch.stack(values), reference["train"]["fine"], args)
         optimizer.zero_grad(set_to_none=True)
@@ -312,7 +320,7 @@ def fit_fine_operators(flow1, flow2, train_ids, val_ids, smeared_field, referenc
         for row, (source, field) in enumerate(zip(inputs, fields)):
             fine = field.to(device).requires_grad_(True)
             gradient = torch.autograd.grad(
-                (observable_vector_torch(fine, checkpoint_loops=True).double()*coefficients[row].detach()).sum(), fine
+                (observable_vector_torch(fine, names=TRAINING_OBSERVABLES, checkpoint_loops=True).double()*coefficients[row].detach()).sum(), fine
             )[0]
             del fine
             fine, _ = flow2(source.to(device), compute_logdet=False)
@@ -373,6 +381,8 @@ def main():
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--evaluate-only", action="store_true")
     parser.add_argument("--pyquda-check", action="store_true")
+    parser.add_argument("--export-fields", action="store_true",
+                        help="save both generated stages as FP64 NERSC fields for Wilson-flow measurements")
     args = parser.parse_args()
     if min(args.sweeps, args.fine_sweeps, args.train_configs, args.validation_configs,
            args.moment_configs) < 2:
@@ -385,6 +395,7 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     paths, manifest = ensemble_paths(args.fine_dir.resolve())
     down = json.loads((args.downsampling_run / "kernel.json").read_text())
+    down_hash = hashlib.sha256((args.downsampling_run / "kernel.pt").read_bytes()).hexdigest()
     splits = down["data_split"]
     if splits != split_indices(len(paths)):
         raise SystemExit("downsampling split does not match fine ensemble")
@@ -401,6 +412,21 @@ def main():
     selected = sorted(set(train_ids + val_ids + test_ids))
     field_cache = output / "smeared_fields"
     field_cache.mkdir(exist_ok=True)
+    cache_metadata = {
+        "fine_dir": str(args.fine_dir.resolve()),
+        "downsampling_checkpoint_sha256": down_hash,
+        "observable_names": DOWNSAMPLING_OBSERVABLES,
+        "training_observables": TRAINING_OBSERVABLES,
+        "held_out_observables": [name for name in DOWNSAMPLING_OBSERVABLES if name not in TRAINING_OBSERVABLES],
+        "source_sha256": [record["sha256"] for record in manifest["configurations"]],
+    }
+    metadata_path = output / "cache_metadata.json"
+    if metadata_path.exists():
+        if json.loads(metadata_path.read_text()) != json.loads(json.dumps(cache_metadata)):
+            raise SystemExit("cached fields use a different source, checkpoint or observable set; choose a new output")
+    elif (output / "targets.npz").exists() or any(field_cache.glob("*.pt")):
+        raise SystemExit("old caches have no source/observable metadata; choose a new output")
+    _write_json(metadata_path, cache_metadata)
 
     def smeared_field(index):
         field_path = field_cache / f"cfg_{index:04d}.pt"
@@ -421,15 +447,22 @@ def main():
             for index in selected:
                 fine = load_links(paths[index], device)
                 smeared = smeared_field(index)
-                measurements["fine"].append(observable_vector_torch(fine).cpu().numpy())
-                measurements["smeared"].append(observable_vector_torch(smeared).cpu().numpy())
+                measurements["fine"].append(observable_vector_torch(fine, names=DOWNSAMPLING_OBSERVABLES).cpu().numpy())
+                measurements["smeared"].append(observable_vector_torch(smeared, names=DOWNSAMPLING_OBSERVABLES).cpu().numpy())
                 print(f"target {index}: fine={measurements['fine'][-1]} smeared={measurements['smeared'][-1]}", flush=True)
-        np.savez(cache, indices=selected, **measurements)
+        np.savez(cache, indices=selected, observable_names=DOWNSAMPLING_OBSERVABLES,
+                 training_observables=TRAINING_OBSERVABLES, **measurements)
     targets = np.load(cache)
+    np.testing.assert_array_equal(targets["observable_names"], DOWNSAMPLING_OBSERVABLES)
     target_map = {int(i): n for n, i in enumerate(targets["indices"])}
     reference = {split: {kind: targets[kind][[target_map[i] for i in ids]]
                         for kind in ("fine", "smeared")}
                  for split, ids in [("train", train_ids), ("validation", val_ids), ("test", test_ids)]}
+    numerical_sample = output / "numerical_sample.pt"
+    if not numerical_sample.exists():
+        with torch.no_grad():
+            torch.save({"coarse": block_links(smeared_field(val_ids[0])).cpu(),
+                        "source_index": val_ids[0]}, numerical_sample)
     checkpoint_path = output / "flows.pt"
     saved = None
     if args.resume or args.evaluate_only:
@@ -445,6 +478,8 @@ def main():
         flow1.load_state_dict(saved["flow1"])
         flow2.load_state_dict(saved["flow2"])
         history = json.loads((output / "history.json").read_text())
+        if saved["downsampling_checkpoint_sha256"] != down_hash:
+            raise SystemExit("flow checkpoint was trained with a different downsampling checkpoint")
     if args.require_stable_inverse:
         coarse = (torch.load(args.stability_coarse_file, map_location="cpu", weights_only=True)["coarse"]
                   if args.stability_coarse_file is not None else None)
@@ -458,7 +493,7 @@ def main():
         temporary = checkpoint_path.with_suffix(".tmp")
         torch.save({"flow1": flow1.state_dict(), "flow2": flow2.state_dict(),
                     "sweeps": args.sweeps, "fine_sweeps": args.fine_sweeps,
-                    "coupling": args.coupling}, temporary)
+                    "coupling": args.coupling, **cache_metadata}, temporary)
         temporary.replace(checkpoint_path)
         _write_json(output / "history.json", history)
 
@@ -491,7 +526,9 @@ def main():
     max_errors = np.zeros(2)
     block_error = 0.
     crosscheck = []
-    if args.pyquda_check:
+    stage1_crosscheck = []
+    export_records = {stage: [] for stage in ("flow1", "flow2", "smeared_reference")}
+    if args.pyquda_check or args.export_fields:
         from pyquda_utils import core
         from rgflow.su3.training import _pyquda_gauge_from_links
         from rgflow.su3.observables import observable_vector_pyquda
@@ -499,6 +536,11 @@ def main():
         if device.type == "cuda":
             torch.cuda.empty_cache()
         core.init(None, manifest["lattice_size"], backend="numpy", resource_path=str(output / ".quda-cache"))
+    if args.export_fields:
+        from pyquda_utils import io
+        from pyquda_io.io_utils import gaugeReunitarize
+        for stage in export_records:
+            (output / "generated_fields" / stage).mkdir(parents=True, exist_ok=True)
     with torch.no_grad():
         for index in test_ids:
             fine = load_links(paths[index], device)
@@ -511,42 +553,93 @@ def main():
                 torch.save({"links": generated.cpu(), "smeared": smeared.cpu(),
                             "coarse": coarse.cpu(), "source_index": index,
                             "seed": args.seed+30000+index}, output / "sample.pt")
+            if args.export_fields:
+                for stage, field in (("flow1", smeared), ("flow2", generated),
+                                     ("smeared_reference", smeared_target)):
+                    links = field.cpu().numpy().astype(np.complex128)
+                    projected = gaugeReunitarize(links.copy(), reunitarize_sigma=0)
+                    projection_error = float(np.max(np.abs(projected-links)))
+                    gauge = _pyquda_gauge_from_links(projected, manifest["lattice_size"])
+                    filename = f"{stage}_cfg_{index:04d}.nersc"
+                    path = output / "generated_fields" / stage / filename
+                    io.writeNERSCGauge(str(path), gauge, use_fp32=False,
+                                       ensemble_label=f"Two-flow {stage}, no rethermalization",
+                                       sequence_number=index)
+                    export_records[stage].append({
+                        "index": index, "filename": filename, "seed": args.seed+30000+index,
+                        "source_index": index, "plaquette": float(gauge.plaquette()[0]),
+                        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                        "bytes": path.stat().st_size,
+                        "double_reunitarization_max_abs_change": projection_error,
+                        "raw_su3_errors": su3_errors(field),
+                    })
             teacher, _ = flow2(smeared_target, compute_logdet=False)
             for name, field in [("flow1_smeared", smeared), ("flow2_fine", generated), ("teacher_fine", teacher)]:
-                values[name].append(observable_vector_torch(field).cpu().numpy())
-            max_errors = np.maximum(max_errors, su3_errors(generated))
+                values[name].append(observable_vector_torch(field, names=DOWNSAMPLING_OBSERVABLES).cpu().numpy())
+            max_errors = np.maximum(max_errors, np.maximum(su3_errors(smeared), su3_errors(generated)))
             block_error = max(block_error, float((block_links(smeared)-coarse).abs().max()))
             if args.pyquda_check and len(crosscheck) < 3:
                 if device.type == "cuda":
                     torch.cuda.empty_cache()
                 gauge = _pyquda_gauge_from_links(generated.cpu().numpy(), manifest["lattice_size"])
-                crosscheck.append(observable_vector_pyquda(gauge) - values["flow2_fine"][-1])
+                crosscheck.append(observable_vector_pyquda(gauge, names=DOWNSAMPLING_OBSERVABLES) - values["flow2_fine"][-1])
+                gauge = _pyquda_gauge_from_links(smeared.cpu().numpy(), manifest["lattice_size"])
+                stage1_crosscheck.append(observable_vector_pyquda(gauge, names=DOWNSAMPLING_OBSERVABLES) - values["flow1_smeared"][-1])
             print(f"test {index}: generated={values['flow2_fine'][-1]}", flush=True)
     values = {key: np.asarray(value) for key, value in values.items()}
     np.savez(output / "observable_distributions.npz", test_indices=test_ids,
+             observable_names=DOWNSAMPLING_OBSERVABLES, training_observables=TRAINING_OBSERVABLES,
              fine_reference=reference["test"]["fine"], smeared_reference=reference["test"]["smeared"], **values)
     metrics = {}
     for name, kind in [("flow1_smeared", "smeared"), ("flow2_fine", "fine"), ("teacher_fine", "fine")]:
-        target = reference["test"][kind]
-        _, inverse = _covariance_inverse(target, target, .1)
-        record = _metric_record(values[name], target, inverse)
+        target = reference["test"][kind].astype(np.float64)
+        _, inverse = _covariance_inverse(target, target, .1, observable_scale=target.std(0, ddof=1))
+        record = _metric_record(values[name], target, inverse,
+                                variance_epsilon=1.e-12 * target.var(0, ddof=1))
         record["acceptance"] = distribution_acceptance(record)
-        record["ks_statistic"] = [ks_2samp(values[name][:, k], target[:, k]).statistic for k in range(4)]
-        record["wasserstein_in_target_sigma"] = [wasserstein_distance(values[name][:, k], target[:, k])/target[:, k].std(ddof=1) for k in range(4)]
+        record["group_acceptance"] = {}
+        for group, columns in (("training", TRAINING_COLUMNS),
+                               ("held_out", [2, 3]), ("all", list(range(len(DOWNSAMPLING_OBSERVABLES))))):
+            record["group_acceptance"][group] = distribution_acceptance({
+                key: np.asarray(record[key])[columns]
+                for key in ("standardized_shift", "mean_shift_in_target_sigma", "std_ratio")
+            })
+        record["ks_statistic"] = [ks_2samp(values[name][:, k], target[:, k]).statistic for k in range(len(DOWNSAMPLING_OBSERVABLES))]
+        record["wasserstein_in_target_sigma"] = [wasserstein_distance(values[name][:, k], target[:, k])/target[:, k].std(ddof=1) for k in range(len(DOWNSAMPLING_OBSERVABLES))]
         metrics[name] = record
-    metrics.update({"observable_names": observable_names(), "source": "held-out downsampled fine ensemble",
+    metrics.update({"observable_names": DOWNSAMPLING_OBSERVABLES,
+                    "training_observables": TRAINING_OBSERVABLES,
+                    "held_out_observables": cache_metadata["held_out_observables"],
+                    "source": "held-out downsampled fine ensemble",
                     "test_configurations": len(test_ids), "max_su3_errors": max_errors,
                     "max_blocking_error": block_error, "pyquda_differences": crosscheck,
+                    "pyquda_stage1_differences": stage1_crosscheck,
                     "rethermalization_sweeps": 0})
     _write_json(output / "metrics.json", metrics)
     _write_json(output / "run.json", {"arguments": vars(args), "data_split": splits,
                 "train_indices": train_ids, "validation_indices": val_ids, "test_indices": test_ids,
-                "fine_manifest": manifest, "downsampling_architecture": architecture,
+                "fine_manifest": manifest, "downsampling_architecture": architecture, **cache_metadata,
                 "method": "conditional Haar-fibre likelihood + paired and operator transport",
                 "coupling": args.coupling,
                 "checkpoint_sha256": hashlib.sha256(checkpoint_path.read_bytes()).hexdigest(),
                 "gauge_equivariant": flow1.gauge_equivariant, "base": "independent normalized Haar SU(3) details",
                 "stage1_free_links_per_cell": 60, "stage1_flowed_links_per_cell": 56})
+    if args.export_fields:
+        provenance = {
+            "run": str(output), "checkpoint_sha256": hashlib.sha256(checkpoint_path.read_bytes()).hexdigest(),
+            "downsampling_run": str(args.downsampling_run.resolve()), **cache_metadata,
+            "test_indices": test_ids, "rethermalization_sweeps": 0,
+            "latent_seed_formula": "seed + 30000 + source_index",
+            "flow_precision": "double", "pre_wilson_flow_projection": "SU(3) reunitarization in double",
+        }
+        for stage, records in export_records.items():
+            _write_json(output / "generated_fields" / stage / "ensemble.json", {
+                "action": "Wilson pure gauge reference; generated fields are unthermalized flow proposals",
+                "gauge_group": "SU(3)", "lattice_size": manifest["lattice_size"], "beta": manifest["beta"],
+                "seed": args.seed, "generation_method": "two_normalizing_flows",
+                "stage": stage, "upsampling_settings": provenance,
+                "storage": "NERSC IEEE64 little-endian 3x3", "configurations": records,
+            })
     print("FINAL", json.dumps({key: metrics[key]["acceptance"] for key in values}), flush=True)
 
 

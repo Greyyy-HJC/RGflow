@@ -1,0 +1,211 @@
+{
+  "settings": {
+    "input": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/L24_beta6p20",
+    "lattice_size": [
+      24,
+      24,
+      24,
+      24
+    ],
+    "beta": 6.2,
+    "ensemble_size": 300,
+    "start": 0,
+    "stride": 10,
+    "samples": 30,
+    "epsilon": 0.02,
+    "t_max": 5.0,
+    "measure_every": 5,
+    "flow": "4D Wilson gradient flow",
+    "integrator": "QUDA third-order Runge-Kutta (RK3)",
+    "precision": "double",
+    "charge_operator": "QUDA clover field strength, traceless SU(3), unrounded total Q",
+    "time_units": "t/a^2",
+    "reader": "PyQUDA NERSC reader: checksum checked; FP32 links reunitarized on input",
+    "pyquda_version": "0.10.54",
+    "configurations": [
+      {
+        "index": 0,
+        "filename": "wilson_beta6p20_L24_cfg_0000.nersc",
+        "sha256": "ca240554e5b1879e3c8409646dae053ebd7f2d32869c4c85977aaa8c35ed773d",
+        "seed": 1234
+      },
+      {
+        "index": 10,
+        "filename": "wilson_beta6p20_L24_cfg_0010.nersc",
+        "sha256": "cfcebbe017561e6a982ce31ff5f1ee32f3cd4bf13369dc004103533d9701d1af",
+        "seed": 1234
+      },
+      {
+        "index": 20,
+        "filename": "wilson_beta6p20_L24_cfg_0020.nersc",
+        "sha256": "853fd679016dbada3afacbce92d27520170dff334a0509f885e0ba377c6fa523",
+        "seed": 1234
+      },
+      {
+        "index": 30,
+        "filename": "wilson_beta6p20_L24_cfg_0030.nersc",
+        "sha256": "3bbca796268aa295e08820ca2bb9a5406b1e8e1388d8497abb08f1253b5a28e8",
+        "seed": 1234
+      },
+      {
+        "index": 40,
+        "filename": "wilson_beta6p20_L24_cfg_0040.nersc",
+        "sha256": "8498902676baaeb1351701c390ea2b66266a27697eb7ed9789dcad3dc04d43c2",
+        "seed": 1234
+      },
+      {
+        "index": 50,
+        "filename": "wilson_beta6p20_L24_cfg_0050.nersc",
+        "sha256": "00431800bc1e1f9997b3bc6d2295af918f89405330d59e9c77b124de98125d77",
+        "seed": 1235
+      },
+      {
+        "index": 60,
+        "filename": "wilson_beta6p20_L24_cfg_0060.nersc",
+        "sha256": "7e113b11649c7168861d571017847319bd742c1a0db76249d63fd973b68b33dd",
+        "seed": 1235
+      },
+      {
+        "index": 70,
+        "filename": "wilson_beta6p20_L24_cfg_0070.nersc",
+        "sha256": "00166235f834e6a0fd460e0fe71863f74ff24b598d2ecbc395e425e559105a9e",
+        "seed": 1235
+      },
+      {
+        "index": 80,
+        "filename": "wilson_beta6p20_L24_cfg_0080.nersc",
+        "sha256": "d34f577ba787545355d95fc25e3e179a006ad2d13386427c85cdad3abad0c3bc",
+        "seed": 1235
+      },
+      {
+        "index": 90,
+        "filename": "wilson_beta6p20_L24_cfg_0090.nersc",
+        "sha256": "38d51dea8c97891e552c6dfffdea2d34bd1ca0811cfee4e152ceb704b6c4235f",
+        "seed": 1235
+      },
+      {
+        "index": 100,
+        "filename": "wilson_beta6p20_L24_cfg_0100.nersc",
+        "sha256": "3d58a7cfe623dfe90c2dc0d26186f863d496d021183e783e4c8b7c334ef8c8d1",
+        "seed": 1235
+      },
+      {
+        "index": 110,
+        "filename": "wilson_beta6p20_L24_cfg_0110.nersc",
+        "sha256": "303fd6131988c4f8696f73045d451241551059ec241bf7d9075d8df2a640adcd",
+        "seed": 1235
+      },
+      {
+        "index": 120,
+        "filename": "wilson_beta6p20_L24_cfg_0120.nersc",
+        "sha256": "44a49451c5c8b7404dea54512570b41d15996525ec70569634d43225b9f4c810",
+        "seed": 1235
+      },
+      {
+        "index": 130,
+        "filename": "wilson_beta6p20_L24_cfg_0130.nersc",
+        "sha256": "7d1e7f8f47df30c572b862a1dcf7d3b0b02bd9a7787bb9b098d7b74f9ef70f37",
+        "seed": 1235
+      },
+      {
+        "index": 140,
+        "filename": "wilson_beta6p20_L24_cfg_0140.nersc",
+        "sha256": "d878f4440039ff49670271d32be1408794ba75f9ffec8e2ec73717e12bbe6ba7",
+        "seed": 1235
+      },
+      {
+        "index": 150,
+        "filename": "wilson_beta6p20_L24_cfg_0150.nersc",
+        "sha256": "87793bec7776a3fbfa13f8d2043b7f638654d751eaf1e3dad991b215985f0dce",
+        "seed": 1235
+      },
+      {
+        "index": 160,
+        "filename": "wilson_beta6p20_L24_cfg_0160.nersc",
+        "sha256": "dce0fb507e17c1da8fc0e42c7d345c1ed210d4e9e0393053f0343926e4379076",
+        "seed": 1235
+      },
+      {
+        "index": 170,
+        "filename": "wilson_beta6p20_L24_cfg_0170.nersc",
+        "sha256": "1b3dd4e4127e9fc3274e4f2bf7258095f88253943783ad68acb91fa120f84d49",
+        "seed": 1235
+      },
+      {
+        "index": 180,
+        "filename": "wilson_beta6p20_L24_cfg_0180.nersc",
+        "sha256": "d0828af8458ee73c07016d1b33bbb25f5a32f7feca8813c0f6a9472a3922324c",
+        "seed": 1235
+      },
+      {
+        "index": 190,
+        "filename": "wilson_beta6p20_L24_cfg_0190.nersc",
+        "sha256": "d22e730599096a0833bd4f53dd0c2cec13dc9f0f07210fe1dc34528c4d40269b",
+        "seed": 1235
+      },
+      {
+        "index": 200,
+        "filename": "wilson_beta6p20_L24_cfg_0200.nersc",
+        "sha256": "957075eeb315d36d0fa914137c64a4ba4e210345af5ace366094a634df9391bb",
+        "seed": 1235
+      },
+      {
+        "index": 210,
+        "filename": "wilson_beta6p20_L24_cfg_0210.nersc",
+        "sha256": "a9c28116f2d2fe44f765ad4ba2f3022ada67a00a9b9eeab1a2e7ac9166c49f37",
+        "seed": 1235
+      },
+      {
+        "index": 220,
+        "filename": "wilson_beta6p20_L24_cfg_0220.nersc",
+        "sha256": "a5a45f4d97a34c16d6c6dcc4934aabf2f2e437579a7df12040736584720110e8",
+        "seed": 1235
+      },
+      {
+        "index": 230,
+        "filename": "wilson_beta6p20_L24_cfg_0230.nersc",
+        "sha256": "16e61e3a60a3977595e5400dd9465c6ffac693ee20623268c6052a24dbd84ce6",
+        "seed": 1235
+      },
+      {
+        "index": 240,
+        "filename": "wilson_beta6p20_L24_cfg_0240.nersc",
+        "sha256": "39fc987bf3dd1ad8cac5dcea029fb749634f3f216f7bf7e02ede80f9c5b3c002",
+        "seed": 1235
+      },
+      {
+        "index": 250,
+        "filename": "wilson_beta6p20_L24_cfg_0250.nersc",
+        "sha256": "058cfe4e3e59d9ae99778f50cde085ac71451ffe8e1a0066e7c0c29c56231724",
+        "seed": 1235
+      },
+      {
+        "index": 260,
+        "filename": "wilson_beta6p20_L24_cfg_0260.nersc",
+        "sha256": "a082beb53d16610eed961eab8760a7b1c8525be2527001157d48d2f69dfcf166",
+        "seed": 1235
+      },
+      {
+        "index": 270,
+        "filename": "wilson_beta6p20_L24_cfg_0270.nersc",
+        "sha256": "b0ca779bf2118b2e17fffc32e06284fb15d4ddce147be1d087418e90d2abc6e7",
+        "seed": 1235
+      },
+      {
+        "index": 280,
+        "filename": "wilson_beta6p20_L24_cfg_0280.nersc",
+        "sha256": "6bdecce40b3a4430a6573d6ad21d88b24ad605d06d0c3ee9f76b1e8ee67b41f5",
+        "seed": 1235
+      },
+      {
+        "index": 290,
+        "filename": "wilson_beta6p20_L24_cfg_0290.nersc",
+        "sha256": "cbbf2f1879ccad762b8300f4654c64429a03a4a9a5456749cc21907daed31dc1",
+        "seed": 1235
+      }
+    ]
+  },
+  "completed_configurations": 30,
+  "complete": true,
+  "total_measurement_seconds": 1541.935942072887
+}

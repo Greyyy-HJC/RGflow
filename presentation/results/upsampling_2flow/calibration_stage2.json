@@ -1,17 +1,21 @@
 {
-  "baseline_checkpoint": "3c3fb5e5059c",
+  "baseline_checkpoint": "6c1be299d5e8",
   "best_offsets": [
-    -0.1582177942752567,
-    -0.2916659063913645,
-    -0.08139839817262765,
-    0.04562942137400261,
-    -0.8155239721032482,
-    -0.01684206462894549
+    -0.2055439785271325,
+    0.24491411312905867,
+    0.09736810964241185,
+    0.3284532719820612,
+    -0.3330120891767434,
+    1.0600261774621538
   ],
-  "best_validation_loss": 72.08979048529316,
+  "best_validation_loss": 103.77531944221926,
   "bound": 1.5,
-  "elapsed_seconds": 2363.0756130218506,
-  "evaluations": 15,
+  "elapsed_seconds": 2592.4590524761006,
+  "evaluations": 11,
+  "held_out_observables": [
+    "rectangle_1x3",
+    "square_2x2"
+  ],
   "initial_offsets": [
     0.0,
     0.0,
@@ -20,24 +24,35 @@
     0.0,
     0.0
   ],
-  "manual_early_stop": "SIGINT after six completed objective evaluations without validation improvement; best checkpoint retained",
   "mean_metric": "diagonal",
-  "message": "validation patience",
+  "message": "Stopped because `callback` function raised `StopIteration` or returned `True`",
   "minutes_budget": 65.0,
+  "observable_names": [
+    "plaquette",
+    "rectangle_1x2",
+    "rectangle_1x3",
+    "square_2x2",
+    "rectangle_2x3",
+    "square_3x3",
+    "polyakov_abs2",
+    "polyakov_abs4"
+  ],
   "optimizer": "bounded least_squares",
+  "optimizer_converged": false,
+  "optimizer_status": -2,
   "patience": 6,
   "require_stable_inverse": true,
   "seed": 1234,
-  "selected_epoch": 29,
   "stopping_reason": "validation patience",
   "terminal_offsets": [
-    -0.16623724275724922,
-    -0.39299747928349266,
-    0.004692678524968235,
-    0.0551272915540488,
-    -0.763612106470135,
-    0.003806542088224932
+    -0.2401985667329165,
+    0.3515501145163565,
+    0.1966655856216339,
+    0.36652978581307016,
+    -0.32239892568094175,
+    1.0384666317137312
   ],
+  "test_targets_used": false,
   "train_ids": [
     0,
     1,
@@ -46,9 +61,20 @@
     6,
     7,
     10,
-    11
+    11,
+    12,
+    15,
+    16,
+    17
   ],
-  "unconstrained_best_validation_loss": 72.08979048529316,
+  "training_observables": [
+    "plaquette",
+    "rectangle_1x2",
+    "rectangle_2x3",
+    "square_3x3",
+    "polyakov_abs2",
+    "polyakov_abs4"
+  ],
   "validation_ids": [
     3,
     8,
@@ -59,7 +85,5 @@
     33,
     38
   ],
-  "validation_mean_bound": 2.0,
-  "variance_weight": 10.0,
-  "terminal_offsets_note": "Offsets of the last completed objective evaluation at the intentional early stop."
+  "variance_weight": 10.0
 }

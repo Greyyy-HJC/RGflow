@@ -1,0 +1,8 @@
+{
+  "fine_index": 0,
+  "observable_max_abs_difference": 4.172325134277344e-07,
+  "jacobian_max_abs_difference": 4.172325134277344e-07,
+  "parallel_and_serial_cpu_results": "exact equality on four independent test bases",
+  "analytic_jacobian": "finite-difference check includes hooks and local coefficients",
+  "tests_passed": 24
+}

@@ -1,43 +1,49 @@
 {
-  "calibration_minutes_budget": 65.0,
-  "flow1_frozen": true,
-  "flow1_source": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/upsample/L12_to_L24_2flow_stable_v3",
-  "flow1_source_sha256": "5bb9f9366d793deb42d29caae315ff34d4dbd212133f352883d894cbdd872e1d",
-  "flow2_source": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/upsample/L12_to_L24_2flow_equivariant_v2",
-  "flow2_source_sha256": "9b8ac9b0efe8a9996dd0a7d11fb49f49627e60f5b0de02832f0ba357d5f0851d",
-  "method": "six-offset fine-flow least squares; frozen stable Flow 1; validation selection",
-  "mode": "six_offset_fine",
-  "new_gradient_epochs": 0,
-  "parameters_per_flow": [
-    0,
-    6
+  "arguments": {
+    "calibration_minutes": 65.0,
+    "downsampling_run": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/downsample/L24_beta6p20_to_L12_beta5p775_polynomial_local_ls_v4_8ops_6train",
+    "epochs": 4,
+    "max_evaluations": 30,
+    "output": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/upsample/L12_to_L24_2flow_v6_8ops_6train",
+    "patience": 6,
+    "seed": 1234,
+    "train_configs": 12,
+    "transport_epochs": 3,
+    "validation_configs": 8
+  },
+  "calibration_and_generation_precision": "double",
+  "calibration_stopping_reasons": {
+    "flow1": "time budget",
+    "flow2": "validation patience"
+  },
+  "checkpoint_sha256": "92a15eebdb830f1bfae8e7dbd270479f2893c95028c1fa0efbdf5d236421c733",
+  "downsampling_checkpoint_sha256": "b28a519dbc839166b5df3455e85c9e58b3f0c06ce637bc1db961fd2393a6643e",
+  "elapsed_seconds": 11410.173060988076,
+  "held_out_observables": [
+    "rectangle_1x3",
+    "square_2x2"
   ],
-  "seed": 1234,
-  "test_configurations": 60,
+  "initialization": "fresh seed; no pretrained flow weights",
+  "method": "fresh conditional likelihood and paired transport; six-offset calibration of each stage",
+  "observable_names": [
+    "plaquette",
+    "rectangle_1x2",
+    "rectangle_1x3",
+    "square_2x2",
+    "rectangle_2x3",
+    "square_3x3",
+    "polyakov_abs2",
+    "polyakov_abs4"
+  ],
+  "rethermalization_sweeps": 0,
   "test_targets_used_in_fit": false,
-  "train_configurations": 8,
-  "validation_configurations": 8,
-  "patience": 6,
-  "calibration_evaluations": 15,
-  "early_stopping": "validation patience",
-  "manual_intervention": "Pre-test mean-bound selection and six-evaluation validation early stop were applied before any held-out test evaluation.",
-  "elapsed_seconds": 3250.1138739585876,
-  "selection_script_sha256": "e012b0f2359822a0b68a49e027922dde011ce30dc4f707499a1b0e83df52da30",
-  "document_pages": 6,
-  "document_compiled": true,
-  "document_text_and_all_pages_reviewed": true,
-  "document_sha256": "572516187a1f029cc0f993901fbc4a89b97637808bb40c570d33f74fd66f53d1",
-  "distribution_verdict": "rough overlap; strict mean/width criterion fails",
-  "mean_shifts": [
-    1.0680556660654426,
-    0.5127339670711275,
-    0.4251466821232952,
-    -0.13034614312997606
+  "training_observables": [
+    "plaquette",
+    "rectangle_1x2",
+    "rectangle_2x3",
+    "square_3x3",
+    "polyakov_abs2",
+    "polyakov_abs4"
   ],
-  "std_ratios": [
-    1.727051998573303,
-    1.2450135565697051,
-    0.9137735367366853,
-    0.7241475971327768
-  ]
+  "warmup_precision": "single"
 }

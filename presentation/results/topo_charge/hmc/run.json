@@ -1,0 +1,46 @@
+{
+  "settings": {
+    "source": {
+      "input": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/L24_beta6p20",
+      "index": 299,
+      "step": 31000,
+      "filename": "wilson_beta6p20_L24_cfg_0299.nersc",
+      "seed": 1235,
+      "bytes": 95552178,
+      "sha256": "ac3f10c76e93300fcaf6ac29e4cb5647f7c992faf93088584f1b25eeefe48e4c",
+      "plaquette": 0.6136007873750442,
+      "max_unitarity_error": 1.0160166685757588e-07,
+      "max_determinant_error": 8.390566987404681e-05
+    },
+    "lattice_size": [
+      24,
+      24,
+      24,
+      24
+    ],
+    "beta": 6.2,
+    "action": "Wilson pure gauge SU(3), periodic in all four directions",
+    "trajectories": 300,
+    "save_every": 10,
+    "trajectory_length": 1.0,
+    "md_steps": 50,
+    "md_step_size": 0.02,
+    "integrator": "second-order Omelyan O2Nf2Ng0V",
+    "lambda": 0.1931833275037836,
+    "projection_tolerance": 2e-15,
+    "seed": 20261015,
+    "precision": "double",
+    "pyquda_version": "0.10.54",
+    "metropolis": true,
+    "warmup": 0,
+    "config_dir": "/home/jinchen/git/fnal/RGflow/temp/topo_charge_hmc_L24",
+    "saved_state": "post-Metropolis chain state; rejected trajectories count as HMC steps",
+    "storage": "NERSC IEEE64 little-endian 3x3"
+  },
+  "completed_trajectories": 300,
+  "checkpoint_trajectory": 300,
+  "complete": true,
+  "accepted_trajectories": 265,
+  "acceptance_rate": 0.8833333333333333,
+  "saved_configurations": 30
+}

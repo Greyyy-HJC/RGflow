@@ -28,10 +28,10 @@ from rgflow.su3.perfect_blocking import optimize_perturbative_coefficients
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_FINE = ROOT / "artifacts" / "4dsu3" / "L24_beta6p20"
-DEFAULT_COARSE = ROOT / "artifacts" / "4dsu3" / "L12_beta5p80"
-DEFAULT_STOUT_OUTPUT = ROOT / "artifacts" / "4dsu3" / "downsample" / "L24_beta6p20_to_L12_beta5p80_stout_v3"
-DEFAULT_POLYNOMIAL_OUTPUT = ROOT / "artifacts" / "4dsu3" / "downsample" / "L24_beta6p20_to_L12_beta5p80_stout_polynomial_v1"
-DEFAULT_FIELD_OUTPUT = ROOT / "artifacts" / "4dsu3" / "downsample" / "L24_beta6p20_to_L12_beta5p80_field_transform_v4"
+DEFAULT_COARSE = ROOT / "artifacts" / "4dsu3" / "L12_beta5p775"
+DEFAULT_STOUT_OUTPUT = ROOT / "artifacts" / "4dsu3" / "downsample" / "L24_beta6p20_to_L12_beta5p775_stout_v4"
+DEFAULT_POLYNOMIAL_OUTPUT = ROOT / "artifacts" / "4dsu3" / "downsample" / "L24_beta6p20_to_L12_beta5p775_stout_polynomial_v2"
+DEFAULT_FIELD_OUTPUT = ROOT / "artifacts" / "4dsu3" / "downsample" / "L24_beta6p20_to_L12_beta5p775_field_transform_v5"
 DEFAULT_REFERENCE_RUN = ROOT / "artifacts" / "4dsu3" / "downsample" / "L24_beta6p20_to_L12_beta5p80_cnn_v2"
 
 
@@ -100,7 +100,10 @@ def main() -> None:
     if not reference_metrics_path.exists():
         raise SystemExit(f"reference CNN metrics not found: {reference_metrics_path}")
     reference_metrics = json.loads(reference_metrics_path.read_text(encoding="utf-8"))
-    reference_test_loss = float(reference_metrics["splits"]["test"]["trained"]["loss"])
+    reference_kernel = json.loads((args.reference_run / "kernel.json").read_text(encoding="utf-8"))
+    reference_beta = reference_kernel["sources"]["coarse_manifest"]["beta"]
+    reference_test_loss = (float(reference_metrics["splits"]["test"]["trained"]["loss"])
+                           if reference_beta == coarse_manifest["beta"] else None)
     baseline_run = args.baseline_run.resolve()
     baseline_path = baseline_run / "observable_distributions.npz"
     baseline_values = None

@@ -19,9 +19,12 @@ selected_run = (json.loads(selection.read_text())['run'] if selection.exists()
                 else 'L12_to_L24_2flow_equivariant_v2')
 parser.add_argument('--upsampling-run', type=Path,
                     default=ROOT/'artifacts/4dsu3/upsample'/selected_run)
+down_selection = json.loads((HERE/'results/selected_downsampling_run.json').read_text())
+parser.add_argument('--downsampling-run', type=Path,
+                    default=ROOT/'artifacts/4dsu3/downsample'/down_selection['run'])
 args = parser.parse_args()
 UP = HERE/'results'/args.upsampling_run.name
-DOWN = HERE/'results/L24_beta6p20_to_L12_beta5p80_polynomial_local_ls_v2'
+DOWN = HERE/'results'/args.downsampling_run.name
 run = json.loads((UP/'run.json').read_text())
 metrics = json.loads((UP/'metrics.json').read_text())
 numerics = json.loads((UP/'numerics.json').read_text())
@@ -110,26 +113,67 @@ else:
                  f"{stops[0]} and {stops[1]}, respectively. Checkpoint selection uses validation loss.")
 
 raw = np.load(DOWN/'observable_distributions.npz')
+down_metrics = json.loads((DOWN/'metrics.json').read_text())
+down_kernel = json.loads((DOWN/'kernel.json').read_text())
+down_names = down_metrics['observables']
+training_names = down_kernel.get('training_observables', down_names)
 x = raw['trained_test'].astype(np.float64)
 y = raw['reference_test'].astype(np.float64)
 shift = (x.mean(0)-y.mean(0))/y.std(0, ddof=1)
 ratio = x.std(0, ddof=1)/y.std(0, ddof=1)
-down_summary = dict(target_mean=y.mean(0).tolist(), mean=x.mean(0).tolist(),
+np.testing.assert_allclose(down_metrics['splits']['test']['trained']['mean_shift_in_target_sigma'], shift)
+np.testing.assert_allclose(down_metrics['splits']['test']['trained']['std_ratio'], ratio)
+z = (x.mean(0)-y.mean(0))/np.sqrt(x.var(0, ddof=1)/len(x)+y.var(0, ddof=1)/len(y))
+down_summary = dict(observables=down_names, training_observables=training_names,
+                    target_mean=y.mean(0).tolist(), mean=x.mean(0).tolist(),
                     target_std=y.std(0, ddof=1).tolist(), std=x.std(0, ddof=1).tolist(),
-                    ks=[float(ks_2samp(x[:, j], y[:, j]).statistic) for j in range(4)],
+                    standardized_shift=z.tolist(),
+                    ks=[float(ks_2samp(x[:, j], y[:, j]).statistic) for j in range(len(down_names))],
                     wasserstein_in_target_sigma=[float(wasserstein_distance(x[:, j], y[:, j])/
-                                                        y[:, j].std(ddof=1)) for j in range(4)])
+                                                        y[:, j].std(ddof=1)) for j in range(len(down_names))])
 (DOWN/'test_statistics.json').write_text(json.dumps(down_summary, indent=2)+'\n')
 down_lines = [r'\begin{table}[t]',
-              r'\caption{Downsampling on 60 test fine and coarse configurations.}',
-              r'\label{tab:down}\begin{tabular}{lrr}\toprule',
-              r'Observable & $\Delta_\sigma$ & $R_s$\\\midrule']
-for j, name in enumerate(names):
-    down_lines.append(f'{name} & ${shift[j]:.3f}$ & ${ratio[j]:.3f}$'+r'\\')
-down_lines += [r'\bottomrule\end{tabular}\end{table}',
-               r'All four mean shifts pass Eq.~\eqref{eq:criteria}, but the '
-               r'plaquette and Polyakov widths fail the 20\% window '
-               r'(Table~\ref{tab:down}, Fig.~\ref{fig:down}).']
+              r'\caption{'+str(len(down_names))+r' downsampling observables on 60 test fine and coarse configurations.}',
+              r'\label{tab:down}\small\begin{tabular}{llrrr}\toprule',
+              r'Observable & Role & $\Delta_\sigma$ & Combined SE & $R_s$\\\midrule']
+for j, name in enumerate(down_names):
+    label = {'plaquette': '$W_{11}$', 'polyakov_abs2': '$|P|^2$', 'polyakov_abs4': '$|P|^4$'}.get(name)
+    if label is None:
+        label = '$W_{'+name.rsplit('_', 1)[1].replace('x', '')+'}$'
+    role = 'Train' if name in training_names else 'Held out'
+    down_lines.append(f'{label} & {role} & ${shift[j]:.3f}$ & ${z[j]:.3f}$ & ${ratio[j]:.3f}$'+r'\\')
+down_lines += [r'\bottomrule\end{tabular}\end{table}']
+for group, columns in [(str(len(training_names))+' training', [i for i,n in enumerate(down_names) if n in training_names]),
+                       (str(len(down_names)-len(training_names))+' held-out', [i for i,n in enumerate(down_names) if n not in training_names]),
+                       ('all '+str(len(down_names)), list(range(len(down_names))))]:
+    if not columns:
+        continue
+    means_pass = bool(np.all(np.abs(shift[columns]) <= 1))
+    widths_pass = bool(np.all(np.abs(ratio[columns]-1) <= .2))
+    down_lines.append('For '+group+' observables, the mean criterion '+
+                      ('passes' if means_pass else 'fails')+' and the width criterion '+
+                      ('passes' if widths_pass else 'fails')+r' (Eq.~\eqref{eq:criteria}).')
+
+history_down = json.loads((DOWN/'fit_history.json').read_text())
+optimizer_down = down_kernel['optimizer']
+fit_lines = [f"The objective decreases from {history_down[0]['loss']:.6g} to "
+             f"{min(row['loss'] for row in history_down):.6g}. "
+             f"The solver used {optimizer_down['nfev']} of {optimizer_down['max_nfev']} "
+             "objective evaluations and " +
+             ("satisfied its convergence criterion." if optimizer_down['success'] else "stopped at its evaluation budget without declaring convergence."),
+             r'Table~\ref{tab:coefficients} gives the frozen parameters.',
+             r'\begin{table}[t]',
+             r'\caption{Physical coefficients of the six-operator downsampling fit.}',
+             r'\label{tab:coefficients}',
+             r'\begin{tabular}{crrr}\toprule',
+             r'Order & $a_n$ & $b_{n-1}$ & $c_n$\\\midrule']
+architecture_down = down_kernel['architecture']
+for i in range(4):
+    values = [architecture_down['coefficients'][i],
+              architecture_down['hook_coefficients'][i] if i < len(architecture_down.get('hook_coefficients', [])) else None,
+              architecture_down['local_coefficients'][i] if i < len(architecture_down.get('local_coefficients', [])) else None]
+    fit_lines.append(str(i+1)+' & '+' & '.join('$'+number(value, 8)+'$' if value is not None else '---' for value in values)+r'\\')
+fit_lines += [r'\bottomrule\end{tabular}\end{table}']
 
 # Observable results are usable even when the final numerical validation fails.
 # An older successful validation report must not be attributed to this checkpoint.
@@ -141,13 +185,18 @@ if quick:
 if fine_calibration:
     paths += ['scripts/upsample/overlap.py', 'scripts/upsample/select_overlap.py']
 hashes = {p: hashlib.sha256((ROOT/p).read_bytes()).hexdigest() for p in paths}
-provenance = dict(base_revision=revision, source_sha256=hashes,
+frozen_down = HERE/'results'/Path(run['arguments']['downsampling_run']).name
+provenance_path = UP/'provenance.json'
+previous_provenance = json.loads(provenance_path.read_text()) if provenance_path.exists() else {}
+base_revision = (previous_provenance['base_revision']
+                 if previous_provenance.get('checkpoint_sha256') == run['checkpoint_sha256'] else revision)
+provenance = dict(base_revision=base_revision, source_sha256=hashes,
                   checkpoint_sha256=run['checkpoint_sha256'],
                   numerical_report_matches_checkpoint=numerics['checkpoint_sha256'] == run['checkpoint_sha256'],
-                  downsampling_checkpoint_sha256=hashlib.sha256((DOWN/'kernel.pt').read_bytes()).hexdigest())
+                  downsampling_checkpoint_sha256=hashlib.sha256((frozen_down/'kernel.pt').read_bytes()).hexdigest())
 if (UP/'source_hashes.json').exists():
     provenance['executed_source_sha256'] = json.loads((UP/'source_hashes.json').read_text())
-(UP/'provenance.json').write_text(json.dumps(provenance, indent=2)+'\n')
+provenance_path.write_text(json.dumps(provenance, indent=2)+'\n')
 source = HERE/'jinchen_progress.tex'
 text = source.read_text()
 evaluation_lines = [
@@ -163,7 +212,7 @@ caption_lines = [r'\caption{Stage-by-stage distributions on the same '+str(test_
                  r'width; annotations give $\Delta_\sigma$ and $R_s$ from Eq.~\eqref{eq:criteria}.',
                  'The top three loop panels use explicitly marked broken horizontal axes to',
                  'show the separated distributions; no samples are shifted to create overlap.}']
-replacements = [('DOWNSAMPLING STATISTICS', down_lines), ('GENERATED RESULTS', lines),
+replacements = [('DOWNSAMPLING FIT', fit_lines), ('DOWNSAMPLING STATISTICS', down_lines), ('GENERATED RESULTS', lines),
                 ('EVALUATION DESCRIPTION', evaluation_lines), ('UPSAMPLING CAPTION', caption_lines)]
 if stable:
     full = numerics['full_lattice_generation']

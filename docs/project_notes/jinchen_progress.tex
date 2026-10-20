@@ -56,7 +56,7 @@ independently with periodic boundaries and Wilson action
  \left(1-\frac13\operatorname{Re}\Tr U_{\mu\nu}(x)\right).
 \end{equation}
 The fine ensemble has $L=24$, $\beta=6.20$; the coarse ensemble has $L=12$,
-$\beta=5.80$. Each chain starts hot, receives 1000 warmup steps, and saves
+$\beta=5.775$. Each chain starts hot, receives 1000 warmup steps, and saves
 a configuration every 100 steps. A step is one heatbath hit plus four
 overrelaxation hits, followed by reunitarization. Seed 1234 supplies the
 first 50 configurations and seed 1235 the next 250, with a separate hot
@@ -68,33 +68,38 @@ The static-potential check uses 20 spatial APE steps ($\alpha=0.5$),
 Wilson loops with $r/a,t/a=1,\ldots,6$, an exponential fit over
 $t/a=2,\ldots,5$, and a Cornell fit over $r/a=2,\ldots,6$.
 With 1000 bootstrap samples and $r_0=0.5$ fm, it gives
-$a_f=0.0722350(2175)$ fm and $a_c=0.137312(1608)$ fm
-(Fig.~\ref{fig:scale}). Their ratio $a_c/a_f\simeq1.90$ is a measured
-scale ratio, distinct from the geometric blocking factor 2.
+$a_f=0.0722350(2175)$ fm and $a_c=0.144038(1749)$ fm
+(Fig.~\ref{fig:scale}). The measured ratio is $a_c/a_f=1.9940(249)$,
+within statistical uncertainty of the geometric blocking factor 2. The
+coarse coupling was lowered from $5.80$ to $5.775$ to approach the target
+$2a_f=0.144470$ fm; the earlier coarse reference gave $a_c/a_f=1.9009(230)$.
 Saved plaquette and APE-$W(2,2)$ series have lag-one correlations between
-$-0.055$ and $0.070$ and estimated statistical inefficiency 1.
+$-0.091$ and $0.070$ and estimated statistical inefficiency 1.
 These checks concern the saved series, whose spacing is 100 update steps.
 
 \begin{figure}[t]
 \includegraphics[width=\linewidth]{reference_scales.pdf}
 \caption{Reference static potentials and lattice spacings from the Sommer
-scale and string tension. The measured spacing ratio is approximately 1.90.}
+scale and string tension. The measured spacing ratio is $1.9940(249)$.}
 \label{fig:scale}
 \end{figure}
 
 \subsection{Observables and data split}
-The four observables are lattice averages of the normalized real traces
-of the plaquette, $1\times2$ rectangle and $2\times2$ square, plus the
-Polyakov observable. The first and third average over six unordered
-planes; the rectangle averages over twelve ordered direction pairs.
-For the Polyakov observable,
+Downsampling measures eight observables: normalized real-trace Wilson loops
+$W_{11},W_{12},W_{13},W_{22},W_{23},W_{33}$ and two Polyakov moments.
+Square loops average over six unordered planes; rectangles average over
+twelve ordered direction pairs. The Polyakov moments are
 \begin{equation}
- O_{\rm Poly}=\frac14\sum_{\mu=0}^3|\overline P_\mu|^2,\qquad
+ O_{2k}=\frac14\sum_{\mu=0}^3|\overline P_\mu|^{2k},\quad k=1,2,\qquad
  \overline P_\mu=\frac{1}{|\Lambda|/L_\mu}\sum_{x_\perp}
- \frac13\Tr\prod_{k=0}^{L_\mu-1}U_\mu(x_\perp+k\hat\mu).
+ \frac13\Tr\prod_{n=0}^{L_\mu-1}U_\mu(x_\perp+n\hat\mu).
 \end{equation}
-The modulus is squared \emph{after} spatial averaging of the complex trace,
-then averaged over all four winding directions.
+Spatial averaging precedes the power, then the four winding directions
+are averaged. In particular, $O_4\ne O_2^2$ in general.
+Only $W_{11},W_{12},W_{23},W_{33},O_2,O_4$ enter fitting.
+The intermediate-scale $W_{13},W_{22}$ are held out from fitting and model
+selection. The archived upsampling experiment below retains its original
+four observables, $W_{11},W_{12},W_{22},O_2$.
 
 Configuration indices $i=0,\ldots,299$ are split by $i\bmod5$:
 $0,1,2$ for training, 3 for validation and 4 for testing, giving
@@ -119,7 +124,7 @@ widths; the independent-sample mean error is $s_j/\sqrt n$. We report
  \label{eq:criteria}
 \end{equation}
 The stated distribution criterion is $|\Delta_{\sigma,j}|\le1$ and
-$0.8\le R_{s,j}\le1.2$ for all four observables.
+$0.8\le R_{s,j}\le1.2$ for every observable in the stated group.
 
 \section{Projected ``stout'' downsampling}
 \subsection{Smoothing and blocking}
@@ -175,53 +180,68 @@ background. The propagator match sums the sixteen momenta
 $k=K/2+\pi\ell$, $\ell\in\{0,1\}^4$, for each coarse momentum $K$.
 Hooks and local terms are added in the subsequent ensemble fit.
 
-The final fit starts from the polynomial-plus-hook solution, with local
-coefficients zero. It minimizes four mean and four log-variance residuals:
+The fit restarts from the perturbative polynomial, with zero initial hook
+and local coefficients, against the $\beta=5.775$ coarse reference. It
+minimizes six mean and six log-variance residuals:
 \begin{equation}
  r_{\mu,j}=\frac{\bar O_j-\bar O_{t,j}}
  {s_{t,j}\sqrt{1/60+1/180}},\qquad
- r_{v,j}=\frac{\log[(s_j^2+10^{-12})/(s_{t,j}^2+10^{-12})]}
+ r_{v,j}=\frac{\log[(s_j^2+\epsilon_j)/(s_{t,j}^2+\epsilon_j)]}
  {\sqrt{2/59+2/179}}.
 \end{equation}
-Trust-region least squares uses analytic ensemble derivatives and scaled
+The numerical floor is $\epsilon_j=10^{-12}s_{t,j}^2$, preserving the tiny
+fourth-moment variance. Trust-region least squares uses analytic ensemble derivatives and scaled
 coordinates $12^na_n$, $12^{m+1}b_m$, $12^nc_n$ to balance polynomial
 orders. Cached basis fields at retained bond positions accelerate the fit.
-The objective decreases from 304.015 to 5.6853, stopping at the budget of
-40 evaluations. Table~\ref{tab:coefficients} gives the frozen parameters.
-
+% BEGIN DOWNSAMPLING FIT
+The objective decreases from 400572 to 47.6273. The solver used 100 of 100 objective evaluations and stopped at its evaluation budget without declaring convergence.
+Table~\ref{tab:coefficients} gives the frozen parameters.
 \begin{table}[t]
-\caption{Physical coefficients of the frozen smoother.}
+\caption{Physical coefficients of the six-operator downsampling fit.}
 \label{tab:coefficients}
 \begin{tabular}{crrr}\toprule
 Order & $a_n$ & $b_{n-1}$ & $c_n$\\\midrule
-1 & $0.1984211682$ & $0.03923634322$ & $0.03779125486$\\
-2 & $-0.02362395915$ & $0.02501181641$ & $-0.02158371669$\\
-3 & $-0.002876974930$ & $0.002998340021$ & $0.002722206164$\\
-4 & $-6.659929755\times10^{-5}$ & --- & $-2.232800723\times10^{-4}$\\\bottomrule
-\end{tabular}
-\end{table}
+1 & $0.12108213$ & $0.031679175$ & $-0.20985334$\\
+2 & $-0.015505376$ & $0.0026943167$ & $-0.037386705$\\
+3 & $-0.0023955843$ & $6.1029627\times10^{-4}$ & $0.0064467807$\\
+4 & $-4.6459874\times10^{-4}$ & --- & $-4.2012315\times10^{-4}$\\
+\bottomrule\end{tabular}\end{table}
+% END DOWNSAMPLING FIT
 
 % BEGIN DOWNSAMPLING STATISTICS
 \begin{table}[t]
-\caption{Downsampling on 60 test fine and coarse configurations.}
-\label{tab:down}\begin{tabular}{lrr}\toprule
-Observable & $\Delta_\sigma$ & $R_s$\\\midrule
-Plaquette & $0.208$ & $1.259$\\
-$W_{12}$ & $0.288$ & $1.033$\\
-$W_{22}$ & $0.294$ & $0.970$\\
-Polyakov & $-0.101$ & $0.725$\\
+\caption{8 downsampling observables on 60 test fine and coarse configurations.}
+\label{tab:down}\small\begin{tabular}{llrrr}\toprule
+Observable & Role & $\Delta_\sigma$ & Combined SE & $R_s$\\\midrule
+$W_{11}$ & Train & $-0.235$ & $-1.220$ & $1.110$\\
+$W_{12}$ & Train & $-0.270$ & $-1.510$ & $0.959$\\
+$W_{13}$ & Held out & $0.753$ & $4.222$ & $0.954$\\
+$W_{22}$ & Held out & $-1.894$ & $-11.311$ & $0.826$\\
+$W_{23}$ & Train & $-0.467$ & $-2.707$ & $0.889$\\
+$W_{33}$ & Train & $0.778$ & $4.409$ & $0.932$\\
+$|P|^2$ & Train & $0.020$ & $0.113$ & $0.899$\\
+$|P|^4$ & Train & $-0.041$ & $-0.251$ & $0.764$\\
 \bottomrule\end{tabular}\end{table}
-All four mean shifts pass Eq.~\eqref{eq:criteria}, but the plaquette and Polyakov widths fail the 20\% window (Table~\ref{tab:down}, Fig.~\ref{fig:down}).
+For 6 training observables, the mean criterion passes and the width criterion fails (Eq.~\eqref{eq:criteria}).
+For 2 held-out observables, the mean criterion fails and the width criterion passes (Eq.~\eqref{eq:criteria}).
+For all 8 observables, the mean criterion fails and the width criterion fails (Eq.~\eqref{eq:criteria}).
 % END DOWNSAMPLING STATISTICS
 
 \begin{figure}[t]
 \includegraphics[width=\linewidth]{downsampling_distributions.pdf}
 \caption{Downsampled and native coarse distributions on 60 test configurations,
-standardized by each target mean and width.}
+standardized by each target mean and width. Held-out panels show operators
+excluded from training; the six training and two held-out distributions
+are checked separately.}
 \label{fig:down}
 \end{figure}
 
 \section{Upsampling with Haar details and two flows}
+The upsampling results in this section are the archived earlier experiment.
+They retain the previous frozen smoother fitted against $\beta=5.80$;
+the new coarse reference and refitted smoother above have not yet been
+used to retrain these flows.
+
 \subsection{Coarse constraints and random details}
 Each coarse cell contains $2^4$ fine sites, hence 64 fine links. Fixing four
 coarse two-link products leaves 60 independent Haar $\SU$ links
@@ -434,6 +454,91 @@ show the separated distributions; no samples are shifted to create overlap.}
 \label{fig:up}
 \end{figure}
 
+\clearpage
+\section{Topological charge and HMC evolution}
+
+Figures~\ref{fig:topo-reference} and \ref{fig:topo-smeared} show the
+unrounded clover topological charge $Q(t)$ for all 300 heatbath reference
+configurations on $24^4$ at $\beta=6.20$, before and after the frozen
+downsampling smoother fitted with $\beta_{\rm coarse}=5.775$.
+The smeared fields $S_{\bm\theta}(U)$ are measured before blocking and
+remain on $24^4$. Both sets undergo Wilson gradient flow with an RK3
+step $\Delta(t/a^2)=0.02$; $Q(t)$ is measured every $0.1$ up to $t/a^2=5$.
+The iteration histories in Figs.~\ref{fig:hb-topo-history} and
+\ref{fig:hmc-topo-history} use the unrounded charge at $t/a^2=5$
+and share vertical limits.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.76\linewidth]{topo_charge_flow_300.pdf}
+\caption{Topological charge versus gradient-flow time for all 300 original
+L24 reference configurations. Each curve represents one configuration;
+colors label the configuration index.}
+\label{fig:topo-reference}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.84\linewidth]{topo_charge_reference_history.pdf}
+\caption{Reference L24 topological charge at $t/a^2=5$ versus configuration
+ID. Adjacent points within each stream are separated by 100 HB steps,
+each consisting of one heatbath and four overrelaxation sweeps.
+The dashed line separates the independent hot-start streams at IDs 49
+and 50; their charge histories are not connected.}
+\label{fig:hb-topo-history}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.76\linewidth]{topo_charge_smeared_flow_300.pdf}
+\caption{Topological charge versus gradient-flow time for the same 300 L24
+configurations after the frozen downsampling smoother, before blocking.
+Colors and axis limits match Fig.~\ref{fig:topo-reference}.}
+\label{fig:topo-smeared}
+\end{figure}
+
+\clearpage
+\subsection{HMC continuation from the last reference configuration}
+
+Starting from the last (300th) L24 reference configuration, we run 300 HMC
+trajectories with the same Wilson action at $\beta=6.20$. Each trajectory
+has length $1$ and 50 second-order Omelyan integration steps;
+265 of 300 trajectories are accepted ($88.3\%$).
+Figure~\ref{fig:hmc-plaquette} shows the plaquette after each Metropolis
+decision. Thirty chain configurations, saved every 10 trajectories,
+undergo the same Wilson gradient flow used above
+(Fig.~\ref{fig:hmc-topo}).
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.76\linewidth]{plaquette_hmc_300.pdf}
+\caption{Mean plaquette during the 300-trajectory HMC continuation.
+Trajectory 0 is the starting reference configuration; the dotted line
+marks its plaquette. Rejected trajectories retain the previous chain state.}
+\label{fig:hmc-plaquette}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.76\linewidth]{topo_charge_hmc_flow.pdf}
+\caption{Unrounded clover $Q(t)$ versus gradient-flow time for the 30 HMC
+configurations saved at trajectories $10,20,\ldots,300$.
+Each curve represents one configuration; colors label the HMC trajectory.}
+\label{fig:hmc-topo}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.84\linewidth]{topo_charge_hmc_history.pdf}
+\caption{HMC topological charge at $t/a^2=5$ versus trajectory.
+Measured snapshots are separated by 10 complete HMC steps, including
+Metropolis decisions; each trajectory has MD length 1 and 50 integration
+steps. The star at trajectory 0 is the last reference configuration
+(ID 299), evaluated at the same flow time.}
+\label{fig:hmc-topo-history}
+\end{figure}
+
+\FloatBarrier
 \begin{thebibliography}{9}
 \bibitem{he} J. He, X.-Y. Jin, J. C. Osborn and Y. Zhao,
 ``Neural Field Transformations for Hybrid Monte Carlo: Architectural Design
