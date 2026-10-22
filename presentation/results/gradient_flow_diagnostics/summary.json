@@ -1,0 +1,46 @@
+{
+  "reference": {
+    "plaquette_sources": 6,
+    "clover_sources": 60,
+    "mean_plaquette_initial": 0.6136888763565691,
+    "mean_plaquette_final": 0.999708520020162,
+    "decreasing_plaquette_intervals": 0,
+    "mean_clover_energy_final": 0.010140923480904729,
+    "clover_initial_rise_configurations": 0,
+    "rms_charge_final": 2.376482945931595,
+    "mean_absolute_charge_change_4_to_5": 0.02269879957915653
+  },
+  "smeared_reference": {
+    "plaquette_sources": 6,
+    "clover_sources": 60,
+    "mean_plaquette_initial": 0.7920454255002416,
+    "mean_plaquette_final": 0.9997204348652874,
+    "decreasing_plaquette_intervals": 0,
+    "mean_clover_energy_final": 0.009737438720943981,
+    "clover_initial_rise_configurations": 0,
+    "rms_charge_final": 2.373633508912307,
+    "mean_absolute_charge_change_4_to_5": 0.01976341914737926
+  },
+  "flow1": {
+    "plaquette_sources": 6,
+    "clover_sources": 60,
+    "mean_plaquette_initial": 0.6216216275985206,
+    "mean_plaquette_final": 0.9932672293403669,
+    "decreasing_plaquette_intervals": 0,
+    "mean_clover_energy_final": 0.2054682906155245,
+    "clover_initial_rise_configurations": 60,
+    "rms_charge_final": 20.26957410841206,
+    "mean_absolute_charge_change_4_to_5": 2.2851383979058326
+  },
+  "flow2": {
+    "plaquette_sources": 6,
+    "clover_sources": 60,
+    "mean_plaquette_initial": 0.6138983881963029,
+    "mean_plaquette_final": 0.9931070825745131,
+    "decreasing_plaquette_intervals": 0,
+    "mean_clover_energy_final": 0.20915681981810413,
+    "clover_initial_rise_configurations": 53,
+    "rms_charge_final": 22.07277788522171,
+    "mean_absolute_charge_change_4_to_5": 2.641044037022461
+  }
+}

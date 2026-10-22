@@ -1,0 +1,19 @@
+{
+  "executed_code_cells": 3,
+  "notebook_errors": 0,
+  "embedded_figures": 2,
+  "production_histories": 24,
+  "refined_histories": 8,
+  "cached_clover_histories": 240,
+  "all_ensemble_values_finite": true,
+  "all_sampled_plaquettes_nondecreasing": true,
+  "independent_clover_comparisons": 12,
+  "known_control_failure": "Exact identity Wilson flow produces NaNs with installed QUDA; near-identity control passes",
+  "checkpoint_sha256": "92a15eebdb830f1bfae8e7dbd270479f2893c95028c1fa0efbdf5d236421c733",
+  "notebook_generator_sha256": "30ae209b81da287af34b5497e16319e58cda62903f8a89aac098b4e2f14b3847",
+  "panels_per_figure": 3,
+  "plaquette_curves_per_panel": 6,
+  "clover_curves_per_panel": 60,
+  "ensemble_mean_curves": 0,
+  "curve_colors": "source ID, consistent across panels and figures"
+}

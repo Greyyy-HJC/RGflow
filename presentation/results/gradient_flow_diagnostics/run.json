@@ -1,0 +1,14 @@
+{
+  "checkpoint_sha256": "92a15eebdb830f1bfae8e7dbd270479f2893c95028c1fa0efbdf5d236421c733",
+  "source_indices": [
+    4,
+    59,
+    119,
+    179,
+    239,
+    299
+  ],
+  "measurement_script_sha256": "530d756b9f581bd5fd3a27167060d2eeb6c89da96380f95df8bb913b3497d712",
+  "complete": true,
+  "validation": "validation.json"
+}

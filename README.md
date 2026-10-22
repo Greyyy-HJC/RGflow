@@ -56,7 +56,21 @@ paired smeared reference are exported as FP64 NERSC fields for their common
 measurement. The stage bundle records source IDs, latent seeds, checkpoint
 hashes, unrounded charge arrays, SU(3) preparation changes and half-step checks.
 
-The same notebook continues the last reference field (the 300th configuration,
+`presentation/gradient_flow_diagnostics.ipynb` contains two figures: plaquette
+and clover energy versus gradient-flow time. Each figure has separate panels
+for reference L24, Flow 1 and Flow 2, with shared axes. Plaquette uses the original
+six paired test configurations; clover energy uses all 60. Each configuration has
+its own curve, with consistent
+source-ID colors across panels; no ensemble-mean curve is added. Numerical
+checks, including the exact-identity control failure, remain in the result JSON files.
+
+```bash
+.venv/bin/python scripts/upsample/diagnose_gradient_flow.py
+.venv/bin/python scripts/upsample/check_gradient_flow_observables.py
+.venv/bin/python scripts/upsample/make_gradient_flow_notebook.py
+```
+
+`presentation/topo_charge.ipynb` also continues the last reference field (the 300th configuration,
 file index 299) with 300 Wilson pure-gauge HMC trajectories at beta=6.20.
 It adds a plaquette history and one total charge-evolution plot for the 30
 chain states saved at trajectories 10, 20, ..., 300. Each trajectory includes

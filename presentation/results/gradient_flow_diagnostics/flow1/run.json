@@ -1,0 +1,204 @@
+{
+  "settings": {
+    "stage": "flow1",
+    "input": "/home/jinchen/git/fnal/RGflow/artifacts/4dsu3/upsample/L12_to_L24_2flow_v6_8ops_6train/generated_fields/flow1",
+    "checkpoint_sha256": "92a15eebdb830f1bfae8e7dbd270479f2893c95028c1fa0efbdf5d236421c733",
+    "downsampling_checkpoint_sha256": "b28a519dbc839166b5df3455e85c9e58b3f0c06ce637bc1db961fd2393a6643e",
+    "configurations": [
+      {
+        "bytes": 191103643,
+        "double_reunitarization_max_abs_change": 1.0969713714551318e-06,
+        "filename": "flow1_cfg_0004.nersc",
+        "index": 4,
+        "plaquette": 0.621293148172831,
+        "raw_su3_errors": [
+          2.2804039483403926e-06,
+          2.3948587445620114e-06
+        ],
+        "seed": 31238,
+        "sha256": "2a19f9ba8db9406c5024e85453f135f2dd674a908d2299687994067a8e5bdfae",
+        "source_index": 4
+      },
+      {
+        "bytes": 191103646,
+        "double_reunitarization_max_abs_change": 1.2367211168688217e-06,
+        "filename": "flow1_cfg_0059.nersc",
+        "index": 59,
+        "plaquette": 0.6217335256212766,
+        "raw_su3_errors": [
+          2.366124636221656e-06,
+          2.5585388062795206e-06
+        ],
+        "seed": 31293,
+        "sha256": "95c632187864ea39709149fc0ad7c4f5f4e34a34eef03986b7014034584aee2a",
+        "source_index": 59
+      },
+      {
+        "bytes": 191103646,
+        "double_reunitarization_max_abs_change": 1.0957219493778523e-06,
+        "filename": "flow1_cfg_0119.nersc",
+        "index": 119,
+        "plaquette": 0.6218321745845978,
+        "raw_su3_errors": [
+          1.98957214303519e-06,
+          2.5390832675584737e-06
+        ],
+        "seed": 31353,
+        "sha256": "13d0425381ede17416c8c0acbb06eb05382e7d1c74d0f7b9e061e6727f9d86e8",
+        "source_index": 119
+      },
+      {
+        "bytes": 191103647,
+        "double_reunitarization_max_abs_change": 1.1116539279507133e-06,
+        "filename": "flow1_cfg_0179.nersc",
+        "index": 179,
+        "plaquette": 0.6215014257024285,
+        "raw_su3_errors": [
+          2.17898606669209e-06,
+          2.5602044470627734e-06
+        ],
+        "seed": 31413,
+        "sha256": "617ece496b4419077b9329d08732f973abc02fb22ad9e2ac9f32be7ed2ea6339",
+        "source_index": 179
+      },
+      {
+        "bytes": 191103646,
+        "double_reunitarization_max_abs_change": 1.12922364737584e-06,
+        "filename": "flow1_cfg_0239.nersc",
+        "index": 239,
+        "plaquette": 0.6216806900552779,
+        "raw_su3_errors": [
+          2.377140117193477e-06,
+          2.7551793924550813e-06
+        ],
+        "seed": 31473,
+        "sha256": "4d85996bc1b197d73e9bb7d06809cbf526575263eb14d10f707fa70099d6b24d",
+        "source_index": 239
+      },
+      {
+        "bytes": 191103646,
+        "double_reunitarization_max_abs_change": 1.142668545284817e-06,
+        "filename": "flow1_cfg_0299.nersc",
+        "index": 299,
+        "plaquette": 0.621688801454711,
+        "raw_su3_errors": [
+          2.374730402987524e-06,
+          2.81270108087765e-06
+        ],
+        "seed": 31533,
+        "sha256": "34c7ab8d8b5871ef149448f99491dbc9b9d107775f92b780f1a276ec1d8c5150",
+        "source_index": 299
+      }
+    ],
+    "selection": "six fixed evenly spaced test-source positions",
+    "source_indices": [
+      4,
+      59,
+      119,
+      179,
+      239,
+      299
+    ],
+    "lattice_size": [
+      24,
+      24,
+      24,
+      24
+    ],
+    "epsilon": 0.02,
+    "t_max": 5.0,
+    "flow_times": [
+      0.0,
+      0.02,
+      0.04,
+      0.06,
+      0.08,
+      0.1,
+      0.12,
+      0.14,
+      0.16,
+      0.18,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9,
+      1.0,
+      1.1,
+      1.2,
+      1.3,
+      1.4,
+      1.5,
+      1.6,
+      1.7,
+      1.8,
+      1.9,
+      2.0,
+      2.1,
+      2.2,
+      2.3,
+      2.4,
+      2.5,
+      2.6,
+      2.7,
+      2.8,
+      2.9,
+      3.0,
+      3.1,
+      3.2,
+      3.3,
+      3.4,
+      3.5,
+      3.6,
+      3.7,
+      3.8,
+      3.9,
+      4.0,
+      4.1,
+      4.2,
+      4.3,
+      4.4,
+      4.5,
+      4.6,
+      4.7,
+      4.8,
+      4.9,
+      5.0
+    ],
+    "flow": "4D Wilson gradient flow",
+    "integrator": "QUDA RK3",
+    "precision": "double",
+    "pyquda_version": "0.10.54",
+    "measurement": "explicit endpoint resident-field plaquette, clover energy and unrounded Q",
+    "plaquette_components": [
+      "total",
+      "spatial",
+      "temporal"
+    ],
+    "energy_components": [
+      "total",
+      "spatial",
+      "temporal"
+    ],
+    "plaquette_energy_definition": "E_plaq = 36 * (1 - P_total), in lattice units",
+    "reader": "NERSC checksum checked; same reader and exported fields as topology notebook"
+  },
+  "complete": true,
+  "endpoint_checks": {
+    "4": {
+      "endpoint_reload_plaquette_max_difference": 0.0,
+      "endpoint_reload_energy_max_difference": 0.0,
+      "endpoint_reload_charge_difference": 0.0,
+      "initial_torch_plaquette_difference": -1.1102230246251565e-16,
+      "initial_max_unitarity_error": 1.1117834293980164e-15,
+      "initial_max_determinant_error": 1.3426356273935429e-15,
+      "endpoint_torch_plaquette_difference": -1.1102230246251565e-16,
+      "endpoint_max_unitarity_error": 5.639933360936129e-14,
+      "endpoint_max_determinant_error": 7.285095769163623e-14
+    }
+  },
+  "completed_configurations": 6
+}
