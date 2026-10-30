@@ -113,6 +113,10 @@ result = dict(coupling=saved['coupling'], checkpoint_sha256=hashlib.sha256(check
               lattice_size=4, records=records, haar_jacobians=jacobians)
 if args.full_lattice_sample:
     coarse = torch.load(args.full_lattice_sample, map_location='cuda', weights_only=True)['coarse']
+    # Warmup saves FP32 samples; generate the FP64 validation lift and gauge
+    # transformation in the promoted checkpoint's precision.
+    if saved['coupling'] == up.STABLE_COUPLING:
+        coarse = coarse.to(torch.complex128)
     torch.manual_seed(8324)
     links = up.constrained_haar_lift(coarse).unsqueeze(0)
     gauge = up.haar_links((1, *links.shape[2:6]), device='cuda', dtype=links.dtype)

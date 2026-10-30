@@ -17,6 +17,13 @@ python3 -m venv .venv
 The root `.venv/` directory is ignored by Git. There is no committed
 `uv.lock`; use the Python environment directly for this project.
 
+## inverserg cluster
+
+On this cluster, use `source /lustre2/inverserg/jinchen/env/qcd.sh`.
+The repository `.venv` links to `/lustre2/inverserg/jinchen/env/qcd`.
+See [cluster setup and reproduction](scripts/cluster/README.md) for the Slurm
+scripts, environment versions, data links, and downsampling → upsampling jobs.
+
 ## Layout
 
 - `docs/` — papers, notes, and analysis documentation
@@ -269,7 +276,8 @@ Training artifacts are under
 `presentation/upsampling_2flow.ipynb` shows the fresh training history,
 eight-operator raw and reference-standardized distributions, intermediate
 and teacher-input diagnostics, grouped acceptance and numerical checks.
-Its small result bundle is replaced when rebuilding the notebook.
+The notebook reads the selected run directly from `artifacts/`; rebuilding it
+saves exported figures alongside that run and embeds them in the notebook.
 
 Both generated stages are exported as FP64 NERSC fields with source IDs,
 latent seeds and checkpoint hashes. Double-precision SU(3) reunitarization

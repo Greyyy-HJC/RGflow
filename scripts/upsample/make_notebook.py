@@ -2,8 +2,8 @@
 """Replace the two-flow presentation with the current eight-operator experiment."""
 
 import argparse
+import os
 from pathlib import Path
-import shutil
 
 import nbformat as nbf
 from nbclient import NotebookClient
@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--run', type=Path,
                     default=ROOT/'artifacts/4dsu3/upsample/L12_to_L24_2flow_v6_8ops_6train')
 args = parser.parse_args()
+relative_run = os.path.relpath(args.run.resolve(), ROOT)
 required = ['observable_distributions.npz', 'metrics.json', 'history.json', 'run.json',
             'flows.pt', 'numerics.json', 'execution_notes.json', 'training_arguments.json',
             'training_invocations.json', 'calibration_stage1.json', 'calibration_stage2.json',
@@ -21,13 +22,6 @@ required = ['observable_distributions.npz', 'metrics.json', 'history.json', 'run
 for name in required:
     if not (args.run/name).exists():
         raise FileNotFoundError(args.run/name)
-bundle = ROOT/'presentation/results/upsampling_2flow'
-if bundle.exists():
-    shutil.rmtree(bundle)
-bundle.mkdir(parents=True)
-for name in required:
-    shutil.copy2(args.run/name, bundle/name)
-
 notebook = nbf.v4.new_notebook()
 notebook.metadata.kernelspec = {'display_name': 'Python (RGflow .venv)', 'language': 'python', 'name': 'python3'}
 notebook.cells = [
@@ -53,14 +47,15 @@ nor validation selection. The fourth Polyakov moment is
 $\frac14\sum_\mu\lvert P_\mu\rvert^4$, after the transverse average in each direction.
 Training, validation and test sources retain the downsampling 180/60/60 split.
 '''),
-nbf.v4.new_code_cell('''from pathlib import Path
+nbf.v4.new_code_cell('''%matplotlib inline
+from pathlib import Path
 import json
 import numpy as np
 import matplotlib.pyplot as plt
 from IPython.display import display, Markdown
 
 ROOT = next(p for p in (Path.cwd(), Path.cwd().parent) if (p/'pyproject.toml').exists())
-RUN = ROOT/'presentation/results/upsampling_2flow'
+RUN = ROOT / __RUN_DIRECTORY__
 data = np.load(RUN/'observable_distributions.npz')
 metrics = json.loads((RUN/'metrics.json').read_text())
 run = json.loads((RUN/'run.json').read_text())
@@ -73,6 +68,7 @@ labels = [r'$W_{11}$', r'$W_{12}$', r'$W_{13}$', r'$W_{22}$', r'$W_{23}$', r'$W_
 np.testing.assert_array_equal(data['observable_names'], names)
 plt.rcParams.update({'figure.dpi': 125, 'axes.grid': True, 'grid.alpha': .15})
 print('Downsampling run:', Path(run['arguments']['downsampling_run']).name)
+print('Source run:', RUN)
 print('Downsampling checkpoint:', run['downsampling_checkpoint_sha256'])
 print('Two-flow checkpoint:', run['checkpoint_sha256'])
 print(f"{len(run['train_indices'])} training / {len(run['validation_indices'])} validation / {len(run['test_indices'])} test sources")
@@ -258,14 +254,18 @@ Run all commands through the root `.venv`:
 The runner resolves the selected downsampling experiment, records all source
 hashes and settings, trains both flows, calibrates each stage, validates the
 frozen checkpoint and evaluates all 60 test sources. Select a fresh training
-directory for a new run; the presentation bundle is replaced on regeneration.
+directory for a new run. The notebook reads that run directly; exported figures
+are saved alongside its measurements, without copying a presentation bundle.
 '''),
 ]
+notebook.cells[1].source = notebook.cells[1].source.replace('__RUN_DIRECTORY__', repr(relative_run))
 path = ROOT/'presentation/upsampling_2flow.ipynb'
 nbf.write(notebook, path)
 manager = KernelManager(kernel_name='python3', transport='ipc', ip=str(ROOT/'temp/upsampling_notebook_kernel'))
 manager.kernel_spec.argv = [str(ROOT/'.venv/bin/python'), '-m', 'ipykernel_launcher', '-f', '{connection_file}']
 NotebookClient(notebook, timeout=300, km=manager, resources={'metadata': {'path': str(ROOT)}}).execute()
+assert any('image/png' in output.get('data', {}) for cell in notebook.cells
+           for output in cell.get('outputs', [])), 'Notebook contains no embedded figures'
 nbf.validate(notebook)
 nbf.write(notebook, path)
 print(path)

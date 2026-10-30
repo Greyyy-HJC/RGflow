@@ -1,7 +1,0 @@
-{
-  "evaluation_precision": "double",
-  "operation": "exact float32-to-float64 casting of all trained parameters; no parameter refit",
-  "promoted_checkpoint_sha256": "e8cb44d7de4ada323aa981d3b84f7b2452bee1fa234444a21187ffde85844221",
-  "training_precision": "single",
-  "warmup_checkpoint_sha256": "6689af5a7a91ba1164965226740cced8bbcae24d98dea19b9c4189cb0d2b1748"
-}

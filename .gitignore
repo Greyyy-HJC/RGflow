@@ -8,3 +8,12 @@ temp/*
 !temp/.gitkeep
 uv.lock
 TODO
+# Local editor settings, cluster logs and generated caches
+.vscode/
+.venv
+logs/
+*.log
+slurm-*.out
+.quda-cache/
+
+scripts/cluster/
